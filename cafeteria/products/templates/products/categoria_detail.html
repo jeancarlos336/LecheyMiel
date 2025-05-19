@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Detalles de la Categoría</h1>
+            <div class="btn-group">
+                <a href="{% url 'products:categoria_update' categoria.id %}" class="btn btn-warning btn-sm">Editar</a>
+                <a href="{% url 'products:categoria_confirm_delete' categoria.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h2>{{ categoria.nombre }}</h2>
+                    
+                    {% if categoria.descripcion %}
+                    <p><strong>Descripción:</strong> {{ categoria.descripcion }}</p>
+                    {% else %}
+                    <p class="text-muted">Sin descripción</p>
+                    {% endif %}
+                    
+                    <p><strong>Área de Preparación:</strong> 
+                        {% if categoria.area_preparacion %}
+                            {{ categoria.area_preparacion }}
+                        {% else %}
+                            No asignada
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <h3 class="mt-4">Productos en esta Categoría</h3>
+            {% with productos=categoria.producto_set.all %}
+                {% if productos %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Precio</th>
+                            <th>Disponibilidad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for producto in productos %}
+                        <tr>
+                            <td>{{ producto.nombre }}</td>
+                            <td>${{ producto.precio }}</td>
+                            <td>
+                                {% if producto.esta_disponible %}
+                                    <span class="badge bg-success">Disponible</span>
+                                {% else %}
+                                    <span class="badge bg-danger">No Disponible</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'products:producto_detail' producto.id %}" class="btn btn-info btn-sm">Ver</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="alert alert-info">
+                    No hay productos asignados a esta categoría.
+                </div>
+                {% endif %}
+            {% endwith %}
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'products:categoria_list' %}" class="btn btn-secondary">Volver a Lista de Categorías</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

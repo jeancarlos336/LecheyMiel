@@ -1,0 +1,54 @@
+
+<!-- templates/orders/historial_pagos_pendientes.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Historial de Pagos Pendientes</h1>
+        <a href="{% url 'orders:pagos_pendientes' %}" class="btn btn-outline-primary">
+            Volver a Pagos Pendientes
+        </a>
+    </div>
+    
+    {% if pagos_completados %}
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h3 class="mb-0">Pagos Completados</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Pedido #</th>
+                            <th>Fecha Promesa</th>
+                            <th>Fecha Pago Real</th>
+                            <th>Monto</th>
+                            <th>Método de Pago</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pago in pagos_completados %}
+                        <tr>
+                            <td>{{ pago.cliente_nombre }}</td>
+                            <td>{{ pago.pago.pedido.id }}</td>
+                            <td>{{ pago.fecha_promesa|date:"d/m/Y" }}</td>
+                            <td>{{ pago.fecha_pago_real|date:"d/m/Y" }}</td>
+                            <td>${{ pago.pago.monto|floatformat:2 }}</td>
+                            <td>{{ pago.pago.get_metodo_display }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No hay pagos completados en el historial.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

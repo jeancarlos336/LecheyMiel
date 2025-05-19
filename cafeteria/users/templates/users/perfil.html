@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi Perfil{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Mi Perfil</h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4 text-center">
+                            {% if user.foto_perfil %}
+                                <img src="{{ user.foto_perfil.url }}" alt="{{ user.get_full_name }}" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                            {% else %}
+                                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 150px; height: 150px; margin: 0 auto;">
+                                    <span style="font-size: 3rem;">{{ user.first_name|first|upper }}{{ user.last_name|first|upper }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <h5>{{ user.get_full_name|default:user.username }}</h5>
+                            <p><strong>Nombre de usuario:</strong> {{ user.username }}</p>
+                            <p><strong>Correo electrónico:</strong> {{ user.email }}</p>
+                            <p><strong>Rol:</strong> {{ user.rol|default:"Sin rol asignado" }}</p>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Actualizar información</h5>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% if field.errors %}
+                                    <div class="text-danger">
+                                        {{ field.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'users:dashboard' %}" class="btn btn-secondary">Volver al Dashboard</a>
+                            <button type="submit" class="btn btn-success">Actualizar Perfil</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+<!-- compras/templates/compras/compra_detail.html -->
+{% extends "base.html" %}
+
+{% block title %}Detalle de Compra | Sistema de Compras{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Detalle de Compra</h1>
+        <div>
+            <a href="{% url 'compras:compra_update' compra.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+            <a href="{% url 'compras:compra_delete' compra.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Eliminar
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Información de la Compra</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Fecha:</strong> {{ compra.fecha }}</p>
+                    <p><strong>Proveedor:</strong> <a href="{% url 'compras:proveedor_detail' compra.proveedor.id %}">{{ compra.proveedor.nombre }}</a></p>
+                    <p><strong>Documento:</strong> {{ compra.get_tipo_documento_display }} {{ compra.numero_documento|default:"Sin número" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Destino:</strong> {{ compra.destino }}</p>
+                    <p><strong>Total:</strong> <span class="badge bg-success fs-6">${{ compra.total }}</span></p>
+                    {% if compra.comprobante %}
+                    <p><strong>Comprobante:</strong> <a href="{{ compra.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver documento</a></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Detalle de la Compra</h5>
+        </div>
+        <div class="card-body">
+            <div class="border p-3 bg-light">
+                {{ compra.detalle|linebreaks }}
+            </div>
+        </div>
+    </div>
+
+    {% if compra.notas_adicionales %}
+    <div class="card">
+        <div class="card-header">
+            <h5>Notas Adicionales</h5>
+        </div>
+        <div class="card-body">
+            {{ compra.notas_adicionales|linebreaks }}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

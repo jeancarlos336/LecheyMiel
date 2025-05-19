@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2>Confirmar finalización del pedido #{{ pedido.id }}</h2>
+        </div>
+        <div class="card-body">
+            <h5>Mesa: {{ pedido.mesa }}</h5>
+            <h5>Total: ${{ pedido.total|floatformat:2 }}</h5>
+            
+            <h4 class="mt-4">Detalles del pedido:</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cantidad</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in pedido.detalles.all %}
+                    <tr>
+                        <td>{{ detalle.cantidad }}x</td>
+                        <td>{{ detalle.producto.nombre }}</td>
+                        <td>
+                            <span class="badge {% if detalle.estado == 'pendiente' %}bg-warning{% elif detalle.estado == 'listo' %}bg-success{% else %}bg-info{% endif %}">
+                                {{ detalle.estado|title }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="alert alert-warning">
+                <p>¿Está seguro que desea finalizar este pedido y enviarlo a cocina?</p>
+                <p>Esta acción cambiará el estado del pedido a "En preparación".</p>
+            </div>
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-secondary">Cancelar</a>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">Confirmar y finalizar pedido</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print {
+            display: none;
+        }
+        body {
+            font-size: 12pt;
+        }
+        .container {
+            max-width: 100%;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+        }
+    }
+    .receipt {
+        max-width: 80mm;
+        margin: 0 auto;
+        padding: 10px;
+        font-family: 'Courier New', monospace;
+    }
+    .receipt-header, .receipt-footer {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .receipt-divider {
+        border-top: 1px dashed #000;
+        margin: 10px 0;
+    }
+    .receipt-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    .receipt-total {
+        font-weight: bold;
+        text-align: right;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="receipt">
+        <div class="receipt-header">
+            <h3>{{ request.site.name|default:"Cafeteria Leche y Miel" }}</h3>
+            <p>{{ request.site.domain|default:"www.lecheymiel.com" }}</p>
+            <p>Tel: {{ empresa.telefono|default:"9999999" }}</p>
+            <p>{{ empresa.direccion|default:"Colin s/n" }}</p>
+            <p>RECIBO DE VENTA EXPRESS</p>
+            <p>Fecha: {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+        </div>
+       
+        <div class="receipt-divider"></div>
+       
+        <div>
+            <p>Pedido #: {{ pedido.numero_orden }}</p>           
+            <h5>{{ pedido.tipo_orden.nombre }}
+                {% if pedido.nombre_cliente %} - Cliente: {{ pedido.nombre_cliente }}{% endif %}
+            </h5>
+           
+            <div class="receipt-divider"></div>
+           
+            {% for detalle in detalles %}
+                <div class="receipt-item">
+                    <span>{{ detalle.cantidad }}x {{ detalle.producto.nombre }}</span>
+                    <span>${{ detalle.subtotal|floatformat:0 }}</span>
+                </div>
+            {% endfor %}
+           
+            <div class="receipt-divider"></div>
+           
+            <div class="receipt-total">               
+                <div class="receipt-item">
+                    <span>TOTAL:</span>
+                    <span>${{ pedido.monto_total|floatformat:0 }}</span>
+                </div>    
+               
+                {% if pedido.estado_pago == 'pagado' and pagos %}
+                    {% with pago=pagos.0 %}
+                        {% if pago.metodo == 'efectivo' and pago.monto_recibido %}
+                        <div class="receipt-item">
+                            <span>EFECTIVO:</span>
+                            <span>${{ pago.monto_recibido|floatformat:0 }}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span>CAMBIO:</span>
+                            <span>${{ pago.cambio|floatformat:0 }}</span>
+                        </div>
+                        {% else %}
+                        <div class="receipt-item">
+                            <span>PAGO CON:</span>
+                            <span>{{ pago.get_metodo_display }}</span>
+                        </div>
+                        {% endif %}
+                    {% endwith %}
+                {% elif pedido.estado_pago == 'pendiente' %}
+                    <div class="receipt-item">
+                        <span>ESTADO:</span>
+                        <span>PAGO PENDIENTE</span>
+                    </div>
+                {% endif %}
+            </div>
+           
+            <div class="receipt-divider"></div>
+           
+            <div class="receipt-footer">
+                <p>Atendido por: {{ pedido.mesero.get_full_name }}</p>
+                {% if pedido.cajero %}
+                <p>Cobrado por: {{ pedido.cajero.get_full_name }}</p>
+                {% endif %}
+                <p>¡Gracias por su preferencia!</p>
+                <p>Lo esperamos pronto</p>
+                <p>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+   
+    <div class="text-center mt-4 no-print">
+        <button onclick="window.print()" class="btn btn-primary">Imprimir recibo</button>
+        <a href="{% url 'orders:venta_express' %}" class="btn btn-secondary ml-2">Volver a ventas</a>
+    </div>
+</div>
+<script>
+    // Imprimir automáticamente al cargar la página
+    window.onload = function() {
+        setTimeout(function() {
+            window.print();
+        }, 1000);
+    };
+</script>
+{% endblock %}

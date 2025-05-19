@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Cambiar contraseña</h2>
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+  <form method="post" autocomplete="off">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="{{ form.old_password.id_for_label }}" class="form-label">Contraseña actual</label>
+      {{ form.old_password }}
+      {% if form.old_password.errors %}
+        <div class="text-danger">{{ form.old_password.errors }}</div>
+      {% endif %}
+    </div>
+    <div class="mb-3">
+      <label for="{{ form.new_password1.id_for_label }}" class="form-label">Nueva contraseña</label>
+      {{ form.new_password1 }}
+      {% if form.new_password1.errors %}
+        <div class="text-danger">{{ form.new_password1.errors }}</div>
+      {% endif %}
+    </div>
+    <div class="mb-3">
+      <label for="{{ form.new_password2.id_for_label }}" class="form-label">Confirmar nueva contraseña</label>
+      {{ form.new_password2 }}
+      {% if form.new_password2.errors %}
+        <div class="text-danger">{{ form.new_password2.errors }}</div>
+      {% endif %}
+    </div>
+    <div class="d-flex justify-content-between">
+      <a href="{% url 'users:perfil' %}" class="btn btn-secondary">Volver a Perfil</a>
+      <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  if (window.history && window.history.pushState) {
+    window.history.pushState('', null, './');
+    window.addEventListener('popstate', function() {
+      window.history.pushState('', null, './');
+    });
+  }
+</script>
+
+{% endblock %}

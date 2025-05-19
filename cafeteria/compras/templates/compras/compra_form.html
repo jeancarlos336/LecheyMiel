@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if form.instance.pk %}Editar Compra{% else %}Nueva Compra{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        {% if form.instance.pk %}
+                            Editar Compra
+                        {% else %}
+                            Registrar Nueva Compra
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.fecha|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.proveedor|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.tipo_documento|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.numero_documento|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.destino|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.total|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.detalle|as_crispy_field }}
+                        {{ form.comprobante|as_crispy_field }}
+                        {{ form.notas_adicionales|as_crispy_field }}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'compras:compra_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 
+                                {% if form.instance.pk %}Actualizar{% else %}Guardar{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Inicializar datepicker para el campo fecha con formato dd-mm-yyyy
+        $('#id_fecha').datepicker({
+            format: 'dd-mm-yyyy',
+            autoclose: true,
+            todayHighlight: true,
+            language: 'es'
+        });
+        
+        // Mejorar el select de proveedor
+        $('#id_proveedor').select2({
+            placeholder: 'Seleccione un proveedor',
+            allowClear: true
+        });
+    });
+</script>
+{% endblock %}

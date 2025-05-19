@@ -1,0 +1,285 @@
+<!-- templates/orders/procesar_pago.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h2>Procesar pago del pedido #{{ pedido.id }}</h2>
+        </div>
+        <div class="card-body">
+            {% if pedido.mesa %}
+                <h5>Mesa: {{ pedido.mesa }} - {{ pedido.ubicacion }}</h5>
+            {% else %}
+                <h5>{{ pedido.tipo_orden.nombre }}{% if pedido.numero_orden %} - {{ pedido.numero_orden }}{% endif %}
+                    {% if pedido.nombre_cliente %} - Cliente: {{ pedido.nombre_cliente }}{% endif %}
+                </h5>
+            {% endif %}
+            <h5>Total a pagar: ${{ total_activo|floatformat:2 }}</h5>
+            
+            <h4 class="mt-4">Resumen del pedido:</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cantidad</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                        <th>Precio unitario</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in items_activos %}
+                    <tr>
+                        <td>{{ detalle.cantidad }}x</td>
+                        <td>{{ detalle.producto.nombre }}</td>
+                        <td><span class="badge bg-success">Activo</span></td>
+                        <td>${{ detalle.precio_unitario|floatformat:2 }}</td>
+                        <td>${{ detalle.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% for detalle in pedido.detalles.all %}
+                        {% if detalle.estado == 'cancelado' %}
+                        <tr class="table-secondary text-muted">
+                            <td>{{ detalle.cantidad }}x</td>
+                            <td>{{ detalle.producto.nombre }}</td>
+                            <td><span class="badge bg-danger">Cancelado</span></td>
+                            <td>${{ detalle.precio_unitario|floatformat:2 }}</td>
+                            <td>$0.00</td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="4" class="text-end">Total:</th>
+                        <th>${{ total_activo|floatformat:2 }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Método de pago</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'orders:completar_pago' pedido.id %}">
+                        {% csrf_token %}
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="metodo_pago" id="efectivo" value="efectivo" checked>
+                            <label class="form-check-label" for="efectivo">
+                                Efectivo
+                            </label>
+                        </div>
+                        
+                        <div id="efectivo-detalles" class="payment-details">
+                            <div class="mb-3">
+                                <label for="monto_recibido" class="form-label">Monto recibido</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="monto_recibido" name="monto_recibido" value="{{ total_activo }}" min="{{ total_activo }}" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cambio" class="form-label">Cambio a devolver</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" class="form-control" id="cambio" name="cambio" readonly value="0.00">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="metodo_pago" id="tarjeta" value="tarjeta">
+                            <label class="form-check-label" for="tarjeta">
+                                Tarjeta de crédito/débito (POS externo)
+                            </label>
+                        </div>
+                        
+                        <!-- Sección del método pendiente -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="metodo_pago" id="pendiente" value="pendiente">
+                            <label class="form-check-label" for="pendiente">
+                                Dejar pendiente (clientes frecuentes)
+                            </label>
+                        </div>
+
+                        <div id="pendiente-detalles" class="payment-details" style="display:none;">
+                            <div class="mb-3 border-start border-4 border-warning ps-3 py-2">
+                                <label for="cliente_nombre" class="form-label fw-bold">Nombre del cliente</label>
+                                <input type="text" class="form-control" id="cliente_nombre" name="cliente_nombre">
+                            </div>
+                            <div class="mb-3 border-start border-4 border-warning ps-3 py-2">
+                                <label for="fecha_promesa" class="form-label fw-bold">Fecha promesa de pago</label>
+                                <input type="date" class="form-control" id="fecha_promesa" name="fecha_promesa">
+                            </div>
+                            <div class="mb-3 border-start border-4 border-warning ps-3 py-2">
+                                <label for="notas_adicionales" class="form-label fw-bold">Notas adicionales</label>
+                                <textarea class="form-control" id="notas_adicionales" name="notas_adicionales" rows="2"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-3" id="imprimir-recibo-container">
+                            <input class="form-check-input" type="checkbox" id="imprimir_recibo" name="imprimir_recibo" checked>
+                            <label class="form-check-label" for="imprimir_recibo">
+                                Imprimir recibo
+                            </label>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-success" id="btn-completar-pago">Completar pago</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar los elementos del DOM
+    const metodoPago = document.querySelectorAll('input[name="metodo_pago"]');
+    const efectivoDetalles = document.getElementById('efectivo-detalles');
+    const pendienteDetalles = document.getElementById('pendiente-detalles');
+    const montoRecibido = document.getElementById('monto_recibido');
+    const cambio = document.getElementById('cambio');
+    const btnCompletarPago = document.getElementById('btn-completar-pago');
+    const imprimirReciboContainer = document.getElementById('imprimir-recibo-container');
+    
+    // Obtener el valor total del pedido
+    const totalPedido = parseFloat(document.querySelector('tfoot th:last-child').textContent.replace('$', '').trim()) || 0;
+    
+    // Función para mostrar detalles según el método seleccionado
+    function mostrarDetallesSegunMetodo() {
+        const metodoSeleccionado = document.querySelector('input[name="metodo_pago"]:checked');
+        
+        // Ocultar todos los detalles primero
+        document.querySelectorAll('.payment-details').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        
+        // Mostrar los detalles correspondientes según la opción seleccionada
+        if (metodoSeleccionado.value === 'efectivo' && efectivoDetalles) {
+            efectivoDetalles.style.display = 'block';
+            // Asegurarse de que el campo monto_recibido sea requerido para efectivo
+            if (montoRecibido) {
+                montoRecibido.setAttribute('required', 'required');
+            }
+        } else if (metodoSeleccionado.value === 'pendiente' && pendienteDetalles) {
+            pendienteDetalles.style.display = 'block';
+            // Quitar required del monto_recibido si no es efectivo
+            if (montoRecibido) {
+                montoRecibido.removeAttribute('required');
+            }
+        } else {
+            // Para tarjeta u otros métodos, no se necesita monto_recibido
+            if (montoRecibido) {
+                montoRecibido.removeAttribute('required');
+            }
+        }
+        
+        // Mostrar u ocultar el checkbox de imprimir recibo según el método seleccionado
+        if (imprimirReciboContainer) {
+            if (metodoSeleccionado.value === 'pendiente') {
+                imprimirReciboContainer.style.display = 'none';
+            } else {
+                imprimirReciboContainer.style.display = 'block';
+            }
+        }
+        
+        // Ajustes para dispositivos móviles - asegurar que la página se desplaza para mostrar los nuevos campos
+        setTimeout(function() {
+            if (metodoSeleccionado.value === 'pendiente') {
+                pendienteDetalles.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 100);
+    }
+    
+    // Ejecutar al cargar la página
+    mostrarDetallesSegunMetodo();
+    
+    // Evento change para los radio buttons
+    metodoPago.forEach(function(radio) {
+        radio.addEventListener('change', mostrarDetallesSegunMetodo);
+    });
+    
+    // Cálculo del cambio en efectivo
+    if (montoRecibido && cambio) {
+        montoRecibido.addEventListener('input', function() {
+            const recibido = parseFloat(this.value) || 0;
+            const cambioCalculado = recibido - totalPedido;
+            cambio.value = cambioCalculado > 0 ? cambioCalculado.toFixed(2) : '0.00';
+        });
+    }
+    
+    // Validar formulario antes de enviar
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const metodoSeleccionado = document.querySelector('input[name="metodo_pago"]:checked').value;
+        
+        // Validación específica para método pendiente
+        if (metodoSeleccionado === 'pendiente') {
+            const clienteNombre = document.getElementById('cliente_nombre').value.trim();
+            const fechaPromesa = document.getElementById('fecha_promesa').value;
+            
+            if (!clienteNombre || !fechaPromesa) {
+                e.preventDefault(); // Detener el envío
+                alert('Para pagos pendientes, debe ingresar el nombre del cliente y la fecha de promesa de pago.');
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Ajuste para dispositivos móviles - fix para eventos táctiles
+    if ('ontouchstart' in window) {
+        // Fix adicional para dispositivos táctiles
+        btnCompletarPago.addEventListener('touchstart', function() {
+            // Este evento asegura que el botón responda en dispositivos táctiles
+            this.classList.add('active');
+        });
+        
+        btnCompletarPago.addEventListener('touchend', function() {
+            this.classList.remove('active');
+        });
+    }
+});
+</script>
+
+<style>
+/* Estilos para mejorar la interacción en dispositivos móviles */
+@media (max-width: 767px) {
+    .form-check {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+    }
+    
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .form-check-label {
+        padding-left: 5px;
+        font-size: 16px;
+    }
+    
+    #btn-completar-pago {
+        padding: 12px 24px;
+        font-size: 18px;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    #btn-completar-pago.active {
+        transform: translateY(2px);
+        background-color: #198754;
+    }
+}
+</style>
+{% endblock %}

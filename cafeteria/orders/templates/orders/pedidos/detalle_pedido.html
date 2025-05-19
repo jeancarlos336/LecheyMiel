@@ -1,0 +1,68 @@
+
+<!-- templates/orders/detalle_pedido.html -->
+{% extends 'base.html' %}
+{% load producto_templatetags %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">Detalles del Pedido</h1>
+                 {% if pedido.mesa %}
+                    <h5>Mesa: {{ pedido.mesa }} - {{ pedido.ubicacion }}</h5>
+                {% else %}
+                    <h5>{{ pedido.tipo_orden.nombre }}{% if pedido.numero_orden %} - {{ pedido.numero_orden }}{% endif %}
+                        {% if pedido.nombre_cliente %} - Cliente: {{ pedido.nombre_cliente }}{% endif %}
+                    </h5>
+                {% endif %}
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-start">Producto</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-end">Precio Unitario</th>
+                                    <th class="text-end">Subtotal</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for detalle in pedido.detalles.all %}
+                                <tr>
+                                    <td class="text-start">{{ detalle.producto.nombre }}</td>
+                                    <td class="text-center">{{ detalle.cantidad }}</td>
+                                    <td class="text-end">${{ detalle.precio_unitario|floatformat:0 }}</td>
+                                    <td class="text-end">${{ detalle.cantidad|multiply:detalle.precio_unitario|floatformat:0 }}</td>
+                                    <td class="text-center">
+                                        <form method="post" class="d-inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="eliminar_item">
+                                            <input type="hidden" name="detalle_id" value="{{ detalle.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash-alt"></i> Eliminar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-white">
+                    <div class="d-flex justify-content-end align-items-center">
+                        <h4 class="mb-0 me-3">Total:</h4>
+                        <h3 class="mb-0 text-primary">${{ pedido.monto_total|floatformat:0 }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

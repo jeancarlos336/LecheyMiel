@@ -1,0 +1,71 @@
+{% extends "orders/pedidos/base_preparacion.html" %}
+{% load static %}
+
+{% block title %}Pedidos para Bar{% endblock %}
+
+{% block header_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-refresh">
+        <i class="fas fa-sync-alt"></i> Actualizar
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-filter-drinks">
+        <i class="fas fa-cocktail"></i> Bebidas
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-success" id="btn-filter-snacks">
+        <i class="fas fa-cookie"></i> Snacks
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drink-item { background-color: rgba(13, 110, 253, 0.05); }
+    .snack-item { background-color: rgba(25, 135, 84, 0.05); }
+    .product-category {
+        font-size: 0.7rem;
+        color: #6c757d;
+        font-weight: normal;
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+$(document).ready(function() {
+    // Actualizar manualmente
+    $('#btn-refresh').click(function() {
+        location.reload();
+    });
+
+    // Filtrar por tipo de producto
+    $('#btn-filter-drinks').click(function() {
+        $('.item-row').hide();
+        $('.item-row.drink').show();
+        $('.btn-group a').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    $('#btn-filter-snacks').click(function() {
+        $('.item-row').hide();
+        $('.item-row.snack').show();
+        $('.btn-group a').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    // Clasificar automáticamente los ítems
+    $('.item-row').each(function() {
+        const productName = $(this).find('td:first').text().toLowerCase();
+        if (productName.includes('bebida') || productName.includes('jugo') || 
+            productName.includes('agua') || productName.includes('refresco') || 
+            productName.includes('cerveza') || productName.includes('vino') || 
+            productName.includes('coctel') || productName.includes('cóctel')) {
+            $(this).addClass('drink');
+        } else {
+            $(this).addClass('snack');
+        }
+    });
+});
+</script>
+{% endblock %}

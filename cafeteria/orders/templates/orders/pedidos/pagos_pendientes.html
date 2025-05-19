@@ -1,0 +1,161 @@
+<!-- templates/orders/pagos_pendientes.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Pagos Pendientes</h1>
+        <div>
+            <a href="{% url 'orders:historial_pagos_pendientes' %}" class="btn btn-outline-secondary">
+                Ver Historial de Pagos
+            </a>
+            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-outline-primary">
+                Volver a Pedidos
+            </a>
+        </div>
+    </div>
+    
+    <!-- Formulario de búsqueda por cliente -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{% url 'orders:pagos_pendientes' %}" class="d-flex">
+                <div class="input-group">
+                    <input type="text" name="cliente" class="form-control" placeholder="Buscar por nombre de cliente" value="{{ cliente_busqueda }}">
+                    <button type="submit" class="btn btn-primary">Buscar</button>
+                    {% if cliente_busqueda %}
+                        <a href="{% url 'orders:pagos_pendientes' %}" class="btn btn-outline-secondary">Limpiar</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    {% if cliente_busqueda %}
+    <div class="alert alert-info">
+        Mostrando resultados para cliente: <strong>{{ cliente_busqueda }}</strong>
+    </div>
+    {% endif %}
+    
+    {% if pagos_pendientes %}
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Pagos por Cobrar</h3>
+                <h4 class="mb-0">Total pendiente: ${{ total_pendiente|floatformat:2 }}</h4>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Fecha Promesa</th>
+                            <th>Pedido #</th>
+                            <th>Monto</th>
+                            <th>Notas</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pago in pagos_pendientes %}
+                        <tr>
+                            <td>{{ pago.cliente_nombre }}</td>
+                            <td>{{ pago.fecha_promesa|date:"d/m/Y" }}</td>
+                            <td>{{ pago.pago.pedido.id }}</td>
+                            <td>${{ pago.pago.monto|floatformat:2 }}</td>
+                            <td>{{ pago.notas_adicionales|default:"-" }}</td>
+                            <td>
+                                <a href="{% url 'orders:marcar_pago_pagado' pago.id %}" class="btn btn-success btn-sm">
+                                    Marcar como Pagado
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            {% if paginator.num_pages > 1 %}
+            <div class="mt-4">
+                <nav aria-label="Paginación de pagos pendientes">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if cliente_busqueda %}&cliente={{ cliente_busqueda }}{% endif %}" aria-label="Primera">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if cliente_busqueda %}&cliente={{ cliente_busqueda }}{% endif %}" aria-label="Anterior">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;&laquo;</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% if page_obj.number > 3 %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% for i in paginator.page_range %}
+                            {% if i >= page_obj.number|add:'-2' and i <= page_obj.number|add:'2' %}
+                                <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+                                    <a class="page-link" href="?page={{ i }}{% if cliente_busqueda %}&cliente={{ cliente_busqueda }}{% endif %}">{{ i }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.number < paginator.num_pages|add:'-2' %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if cliente_busqueda %}&cliente={{ cliente_busqueda }}{% endif %}" aria-label="Siguiente">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paginator.num_pages }}{% if cliente_busqueda %}&cliente={{ cliente_busqueda }}{% endif %}" aria-label="Última">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;&raquo;</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                <p class="text-center">
+                    Página {{ page_obj.number }} de {{ paginator.num_pages }}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-success">
+        {% if cliente_busqueda %}
+            No se encontraron pagos pendientes para el cliente: <strong>{{ cliente_busqueda }}</strong>
+        {% else %}
+            No hay pagos pendientes en este momento.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

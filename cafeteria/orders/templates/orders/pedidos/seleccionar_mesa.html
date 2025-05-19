@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% load producto_templatetags %}
+{% block content %}
+<div class="container">
+    <h1 class="text-center mb-4">Seleccionar Mesa</h1>
+    
+    <div class="restaurant-layout position-relative p-4 mb-4">
+        <!-- Paredes del restaurante -->
+        <div class="restaurant-wall wall-top"></div>
+        <div class="restaurant-wall wall-bottom"></div>
+        <div class="restaurant-wall wall-left"></div>
+        <div class="restaurant-wall wall-right"></div>
+        
+        <!-- Entrada -->
+        <div class="entrance"></div>
+        
+        <!-- Barra/Counter -->
+        <div class="bar-counter">
+            <span class="text-white d-block text-center mt-2 fw-bold">Mesas</span>
+        </div>
+        
+        <!-- Mesas -->
+        {% for mesa in mesas %}
+            {% with pos=mesa_positions|get_item:mesa.numero %}
+                <a href="{% url 'orders:tomar_pedido' mesa.id %}" 
+                   class="table-link position-absolute" 
+                   style="left: {{ pos.x }}%; top: {{ pos.y }}%;">
+                    <div class="table rounded-circle d-flex flex-column align-items-center justify-content-center
+                              {% if mesa.estado == 'disponible' %}table-available
+                              {% elif mesa.estado == 'ocupada' %}table-occupied
+                              {% elif mesa.estado == 'reservada' %}table-reserved
+                              {% else %}table-other{% endif %}" 
+                         data-bs-toggle="tooltip" data-bs-placement="top" 
+                         title="Mesa {{ mesa.numero }} - {{ mesa.estado|capfirst }}">
+                        <i class="fas fa-utensils"></i>
+                        <span class="table-number">{{ mesa.numero }}</span>
+                    </div>
+                </a>
+            {% endwith %}
+        {% endfor %}
+    </div>
+    
+    <!-- Leyenda -->
+    <div class="d-flex justify-content-center gap-4 mb-4 flex-wrap">
+        <div class="d-flex align-items-center mb-2">
+            <div class="table-legend table-available"></div>
+            <span class="ms-2">Disponible</span>
+        </div>
+        <div class="d-flex align-items-center mb-2">
+            <div class="table-legend table-occupied"></div>
+            <span class="ms-2">Ocupada</span>
+        </div>
+        <div class="d-flex align-items-center mb-2">
+            <div class="table-legend table-reserved"></div>
+            <span class="ms-2">Reservada</span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .restaurant-layout {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        min-height: 500px;
+        position: relative;
+        margin-bottom: 100px; /* Espacio extra para mesas fuera del layout */
+    }
+    
+    @media (max-width: 767px) {
+        .restaurant-layout {
+            min-height: 400px;
+            margin-bottom: 150px;
+        }
+    }
+    
+    .restaurant-wall {
+        background-color: #6c757d;
+        position: absolute;
+    }
+    
+    .wall-top {
+        height: 10px;
+        width: 100%;
+        top: 0;
+        left: 0;
+        border-radius: 10px 10px 0 0;
+    }
+    
+    .wall-bottom {
+        height: 10px;
+        width: 100%;
+        bottom: 0;
+        left: 0;
+        border-radius: 0 0 10px 10px;
+    }
+    
+    .wall-left {
+        width: 10px;
+        height: 100%;
+        top: 0;
+        left: 0;
+        border-radius: 10px 0 0 10px;
+    }
+    
+    .wall-right {
+        width: 10px;
+        height: 100%;
+        top: 0;
+        right: 0;
+        border-radius: 0 10px 10px 0;
+    }
+    
+    .entrance {
+        position: absolute;
+        bottom: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 20px;
+        background-color: #fff;
+        border-radius: 0 0 50% 50%;
+        border: 5px solid #6c757d;
+        border-top: none;
+    }
+    
+    .bar-counter {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        width: 150px;
+        height: 50px;
+        background-color: #8b4513;
+        border-radius: 10px;
+    }
+    
+    @media (max-width: 576px) {
+        .bar-counter {
+            width: 100px;
+            right: 20px;
+        }
+    }
+    
+    .table {
+        width: 70px;
+        height: 70px;
+        text-align: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    @media (max-width: 576px) {
+        .table {
+            width: 60px;
+            height: 60px;
+        }
+    }
+    
+    .table-available {
+        background-color: #28a745;
+        border: 2px solid #1e7e34;
+    }
+    
+    .table-occupied {
+        background-color: #dc3545;
+        border: 2px solid #bd2130;
+    }
+    
+    .table-reserved {
+        background-color: #ffc107;
+        border: 2px solid #d39e00;
+    }
+    
+    .table-other {
+        background-color: #6c757d;
+        border: 2px solid #5a6268;
+    }
+    
+    .table i {
+        font-size: 20px;
+        color: white;
+        margin-bottom: 5px;
+    }
+    
+    @media (max-width: 576px) {
+        .table i {
+            font-size: 18px;
+        }
+    }
+    
+    .table-number {
+        font-weight: bold;
+        color: white;
+        font-size: 18px;
+    }
+    
+    @media (max-width: 576px) {
+        .table-number {
+            font-size: 16px;
+        }
+    }
+    
+    .table:hover {
+        transform: scale(1.1);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 10;
+    }
+    
+    .table-legend {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Definir posiciones fijas para cada mesa
+    window.default_positions = {
+        1: {x: 20, y: 35},
+        2: {x: 50, y: 45},
+        3: {x: 70, y: 60},
+        4: {x: 65, y: 75},
+        5: {x: 85, y: 80}
+    };
+    
+    // Inicializar tooltips de Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+});
+</script>
+{% endblock %}

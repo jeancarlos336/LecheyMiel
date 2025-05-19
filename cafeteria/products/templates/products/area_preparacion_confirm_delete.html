@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h1 class="mb-0">Eliminar Área de Preparación</h1>
+        </div>
+        <div class="card-body">
+            <p class="lead">¿Está seguro de que desea eliminar la siguiente área de preparación?</p>
+            
+            <div class="alert alert-warning" role="alert">
+                <strong>Advertencia:</strong> Esta acción no se puede deshacer.
+                {% if object.categoria_set.exists %}
+                <p class="mt-2 mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Esta área contiene {{ object.categoria_set.count }} categoría(s).
+                </p>
+                {% endif %}
+            </div>
+            
+            <div class="border p-3 mb-3">
+                <h2>{{ object.get_nombre_display }}</h2>
+                {% if object.descripcion %}
+                <p><strong>Descripción:</strong> {{ object.descripcion }}</p>
+                {% endif %}
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
+                <a href="{% url 'products:Area_Preparacion_DetailView' object.id %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

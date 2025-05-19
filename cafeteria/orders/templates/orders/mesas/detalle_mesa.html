@@ -1,0 +1,112 @@
+<!-- templates/orders/mesas/detalle_mesa.html -->
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="col-md-6">
+            <h1 class="display-6 mb-0">Detalle de Mesa</h1>
+            <p class="text-muted">Mesa {{ mesa.numero }} - Estado actual: {{ mesa.get_estado_display }}</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <a href="{% url 'orders:lista_mesas' %}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left me-2"></i>Volver a la lista
+            </a>
+            <a href="{% url 'orders:editar_mesa' mesa.id %}" class="btn btn-primary">
+                <i class="fas fa-edit me-2"></i>Editar Mesa
+            </a>
+        </div>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted">Capacidad</h6>
+                            <p class="card-text">{{ mesa.capacidad }} personas</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted">Área</h6>
+                            <p class="card-text">{{ mesa.area|default:"No asignada" }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted">Estado Actual</h6>
+                            {% if mesa.estado == 'disponible' %}
+                                <span class="badge bg-success">Disponible</span>
+                            {% elif mesa.estado == 'ocupada' %}
+                                <span class="badge bg-danger">Ocupada</span>
+                            {% elif mesa.estado == 'reservada' %}
+                                <span class="badge bg-warning text-dark">Reservada</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ mesa.estado }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="border-top pt-4">
+                <h4 class="mb-3">Cambiar Estado</h4>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="estado" value="disponible">
+                            <button type="submit" class="btn btn-success w-100 py-3 
+                                {% if mesa.estado == 'disponible' %}disabled{% endif %}"
+                                {% if mesa.estado == 'disponible' %}aria-disabled="true"{% endif %}>
+                                <h5 class="mb-1">Disponible</h5>
+                                <small class="text-white-50">Mesa libre para nuevos clientes</small>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-3">
+                        <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="estado" value="ocupada">
+                            <button type="submit" class="btn btn-danger w-100 py-3 
+                                {% if mesa.estado == 'ocupada' %}disabled{% endif %}"
+                                {% if mesa.estado == 'ocupada' %}aria-disabled="true"{% endif %}>
+                                <h5 class="mb-1">Ocupada</h5>
+                                <small class="text-white-50">Mesa con clientes actuales</small>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-3">
+                        <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="estado" value="reservada">
+                            <button type="submit" class="btn btn-warning w-100 py-3 
+                                {% if mesa.estado == 'reservada' %}disabled{% endif %}"
+                                {% if mesa.estado == 'reservada' %}aria-disabled="true"{% endif %}>
+                                <h5 class="mb-1">Reservada</h5>
+                                <small class="text-white-50">Mesa apartada para reservación</small>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-3">
+                        <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="estado" value="mantenimiento">
+                            <button type="submit" class="btn btn-secondary w-100 py-3 
+                                {% if mesa.estado == 'mantenimiento' %}disabled{% endif %}"
+                                {% if mesa.estado == 'mantenimiento' %}aria-disabled="true"{% endif %}>
+                                <h5 class="mb-1">Mantenimiento</h5>
+                                <small class="text-white-50">Mesa no disponible por reparación</small>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

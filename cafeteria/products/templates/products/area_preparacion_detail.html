@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Detalles del Área de Preparación</h1>
+            <div class="btn-group">
+                <a href="{% url 'products:area_preparacion_update' area.id %}" class="btn btn-warning btn-sm">Editar</a>
+                <a href="{% url 'products:area_preparacion_confirm_delete' area.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h2>{{ area.get_nombre_display }}</h2>
+                    
+                    {% if area.descripcion %}
+                    <p><strong>Descripción:</strong> {{ area.descripcion }}</p>
+                    {% else %}
+                    <p class="text-muted">Sin descripción</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <h3 class="mt-4">Categorías en esta Área</h3>
+            {% with categorias=area.categoria_set.all %}
+                {% if categorias %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for categoria in categorias %}
+                        <tr>
+                            <td>{{ categoria.nombre }}</td>
+                            <td>{{ categoria.descripcion|default:"Sin descripción" }}</td>
+                            <td>
+                                <a href="{% url 'products:Categoria_DetailView' categoria.id %}" class="btn btn-info btn-sm">Ver</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="alert alert-info">
+                    No hay categorías asignadas a esta área de preparación.
+                </div>
+                {% endif %}
+            {% endwith %}
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'products:area_preparacion_list' %}" class="btn btn-secondary">Volver a Lista de Áreas</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

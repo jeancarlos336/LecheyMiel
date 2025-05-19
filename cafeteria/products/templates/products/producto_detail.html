@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Producto{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">{{ producto.nombre }}</h4>
+                        <div>
+                            {% if perms.products.change_producto or user.rol.nombre == 'administrador' %}
+                            <a href="{% url 'products:producto_update' producto.id %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'products:producto_list' %}" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            {% if producto.imagen %}
+                                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="img-fluid rounded mb-3">
+                            {% else %}
+                                <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center mb-3" style="height: 200px;">
+                                    Sin imagen
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <table class="table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Nombre:</th>
+                                        <td>{{ producto.nombre }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Precio:</th>
+                                        <td>S/ {{ producto.precio }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Categoría:</th>
+                                        <td>{{ producto.categoria }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Área de Preparación:</th>
+                                        <td>{{ producto.area_preparacion }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Tiempo de Preparación:</th>
+                                        <td>{{ producto.tiempo_preparacion }} minutos</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Estado:</th>
+                                        <td>
+                                            {% if producto.esta_disponible %}
+                                            <span class="badge bg-success">Disponible</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">No Disponible</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% if producto.descripcion %}
+                                    <tr>
+                                        <th scope="row">Descripción:</th>
+                                        <td>{{ producto.descripcion }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

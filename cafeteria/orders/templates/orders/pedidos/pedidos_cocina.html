@@ -1,0 +1,79 @@
+{% extends "orders/pedidos/base_preparacion.html" %}
+{% load static %}
+
+{% block title %}Pedidos para Cocina{% endblock %}
+
+{% block header_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-refresh">
+        <i class="fas fa-sync-alt"></i> Actualizar
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-filter-urgent">
+        <i class="fas fa-exclamation-circle"></i> Urgentes
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .urgent-pedido {
+        border-left: 4px solid #dc3545;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+    .timer-cell {
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+$(document).ready(function() {
+    // Actualizar manualmente
+    $('#btn-refresh').click(function() {
+        location.reload();
+    });
+
+    // Filtrar pedidos urgentes (más de 15 minutos)
+    $('#btn-filter-urgent').click(function() {
+        $('.pedido-card').hide();
+        $('.pedido-card.urgent').show();
+        $('.btn-group a').removeClass('active');
+    });
+
+    // Actualizar timers cada segundo
+    function updateTimers() {
+        $('.timer-cell').each(function() {
+            const startTime = new Date($(this).data('start-time'));
+            const now = new Date();
+            const diff = Math.floor((now - startTime) / 1000); // diferencia en segundos
+            
+            const hours = Math.floor(diff / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            const seconds = diff % 60;
+            
+            $(this).text(
+                (hours > 0 ? hours + 'h ' : '') + 
+                (minutes > 0 ? minutes + 'm ' : '') + 
+                seconds + 's'
+            );
+            
+            // Marcar como urgente si lleva más de 15 minutos
+            if (diff > 900) { // 15 minutos = 900 segundos
+                $(this).closest('.pedido-card').addClass('urgent urgent-pedido');
+            }
+        });
+    }
+    
+    setInterval(updateTimers, 1000);
+    updateTimers();
+});
+</script>
+{% endblock %}

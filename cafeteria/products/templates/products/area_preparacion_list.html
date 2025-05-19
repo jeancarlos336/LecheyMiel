@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Áreas de Preparación</h1>
+    
+    <a href="{% url 'products:area_preparacion_create' %}" class="btn btn-primary mb-3">
+        Crear Nueva Área de Preparación
+    </a>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for area in areas %}
+            <tr>
+                <td>{{ area.get_nombre_display }}</td>
+                <td>{{ area.descripcion|default:"Sin descripción" }}</td>
+                <td>
+                    <a href="{% url 'products:Area_Preparacion_DetailView' area.id %}" class="btn btn-info btn-sm">Ver</a>
+                    <a href="{% url 'products:area_preparacion_update' area.id %}" class="btn btn-warning btn-sm">Editar</a>
+                    <a href="{% url 'products:area_preparacion_confirm_delete' area.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="text-center">No hay áreas de preparación registradas</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h1 class="mb-0">Eliminar Categoría</h1>
+        </div>
+        <div class="card-body">
+            <p class="lead">¿Está seguro de que desea eliminar la siguiente categoría?</p>
+            
+            <div class="alert alert-warning" role="alert">
+                <strong>Advertencia:</strong> Esta acción no se puede deshacer.
+                {% if object.producto_set.exists %}
+                <p class="mt-2 mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Esta categoría contiene {{ object.producto_set.count }} producto(s).
+                </p>
+                {% endif %}
+            </div>
+            
+            <div class="border p-3 mb-3">
+                <h2>{{ object.nombre }}</h2>
+                {% if object.descripcion %}
+                <p><strong>Descripción:</strong> {{ object.descripcion }}</p>
+                {% endif %}
+                <p><strong>Área de Preparación:</strong> 
+                    {{ object.area_preparacion|default:"No asignada" }}
+                </p>
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
+                <a href="{% url 'products:Categoria_DetailView' object.id %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

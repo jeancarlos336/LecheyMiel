@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load producto_templatetags %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">
+        {% if form.instance.pk %}
+            Editar Área de Preparación
+        {% else %}
+            Crear Nueva Área de Preparación
+        {% endif %}
+    </h1>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="{{ form.nombre.id_for_label }}">Nombre</label>
+            {{ form.nombre|add_class:"form-control" }}
+            {% if form.nombre.errors %}
+                <div class="text-danger">{{ form.nombre.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.descripcion.id_for_label }}">Descripción</label>
+            {{ form.descripcion|add_class:"form-control" }}
+        </div>
+
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">
+                {% if form.instance.pk %}
+                    Actualizar Área de Preparación
+                {% else %}
+                    Crear Área de Preparación
+                {% endif %}
+            </button>
+            <a href="{% url 'products:area_preparacion_list' %}" class="btn btn-secondary ml-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

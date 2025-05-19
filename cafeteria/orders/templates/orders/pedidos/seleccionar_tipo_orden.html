@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+  <h2 class="text-center mb-4">Selecciona el tipo de pedido</h2>
+
+  <!-- Tipos que requieren mesa (en el local, etc.) -->
+  <h3 class="text-center mb-4">Con mesa requerida</h3>
+  <div class="row justify-content-center">
+    {% for tipo in tipos_con_mesa %}
+    <div class="col-md-6 col-lg-4 mb-4">
+      <div class="card h-100 text-center shadow-sm border-0 rounded-4 order-type-card">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+          <div class="text-success fs-1 mb-3">
+            <i class="bi bi-person-lines-fill"></i>
+          </div>
+          <h5 class="fw-semibold mb-2">{{ tipo.nombre }}</h5>
+          <p class="text-secondary mb-4">{{ tipo.descripcion }}</p>
+          <a href="{% url 'orders:seleccionar_mesa' %}" class="btn btn-success px-4 py-2 rounded-pill text-uppercase fw-medium">Seleccionar</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Tipos que no requieren mesa (para llevar, delivery, etc.) -->
+  <h3 class="text-center mb-4 mt-5">Sin mesa requerida</h3>
+  <div class="row justify-content-center">
+    <!-- Venta Express (siempre primera) -->
+    <div class="col-md-6 col-lg-4 mb-4">
+      <div class="card h-100 text-center shadow-sm border-0 rounded-4 order-type-card">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+          <div class="text-warning fs-1 mb-3">
+            <i class="bi bi-lightning-charge-fill"></i>
+          </div>
+          <h5 class="fw-semibold mb-2">Venta Express</h5>
+          <p class="text-secondary mb-4">Pedido rápido sin necesidad de mesa</p>
+          <a href="{% url 'orders:venta_express' %}" class="btn btn-warning px-4 py-2 rounded-pill text-uppercase fw-medium text-white">Seleccionar</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resto de tarjetas dinámicas excluyendo express -->
+    {% for tipo in tipos_sin_mesa %}
+      {% if tipo.nombre|lower != 'express' and tipo.nombre|lower != 'venta express' %}
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 text-center shadow-sm border-0 rounded-4 order-type-card">
+          <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+            <div class="text-primary fs-1 mb-3">
+              {% if tipo.nombre|lower == 'delivery' %}
+                <i class="bi bi-truck"></i>
+              {% elif tipo.nombre|lower == 'para llevar' %}
+                <i class="bi bi-bag-fill"></i>
+              {% else %}
+                <i class="bi bi-box-seam"></i>
+              {% endif %}
+            </div>
+            <h5 class="fw-semibold mb-2">{{ tipo.nombre }}</h5>
+            <p class="text-secondary mb-4">{{ tipo.descripcion }}</p>
+            <a href="{% url 'orders:crear_pedido_para_llevar' tipo.id %}" class="btn btn-primary px-4 py-2 rounded-pill text-uppercase fw-medium">Seleccionar</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  .order-type-card {
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .order-type-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  }
+</style>
+{% endblock %}

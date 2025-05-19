@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="col-md-6">
+            <h1 class="display-6 mb-0">Eliminar Mesa</h1>
+            <p class="text-muted">Confirmación de eliminación de Mesa {{ mesa.numero }}</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <a href="{% url 'orders:lista_mesas' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Cancelar
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-danger">
+        <div class="card-body">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="fas fa-exclamation-triangle me-3 fa-2x"></i>
+                <div>
+                    <strong>¡Atención!</strong> Estás a punto de eliminar la Mesa {{ mesa.numero }}. Esta acción no se puede deshacer.
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h4 class="mb-3">Detalles de la Mesa</h4>
+                    <div class="card mb-4">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Número de Mesa
+                                <span class="badge bg-primary rounded-pill">{{ mesa.numero }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Capacidad
+                                <span class="badge bg-info rounded-pill">{{ mesa.capacidad }} personas</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Estado Actual
+                                <span class="badge {% if mesa.estado == 'disponible' %}bg-success{% elif mesa.estado == 'ocupada' %}bg-danger{% else %}bg-warning{% endif %} rounded-pill">
+                                    {{ mesa.get_estado_display }}
+                                </span>
+                            </li>
+                            {% if mesa.area %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Área
+                                <span class="badge bg-secondary rounded-pill">{{ mesa.area }}</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    {% if mesa.estado == 'ocupada' %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Advertencia de Eliminación</strong>
+                        <p class="mt-2">Esta mesa está actualmente ocupada. Si la eliminas, podrías perder información de pedidos activos.</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white">
+                            Confirmación de Eliminación
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-danger btn-lg">
+                                        <i class="fas fa-trash me-2"></i>Confirmar Eliminación
+                                    </button>
+                                    <a href="{% url 'orders:lista_mesas' %}" class="btn btn-secondary">
+                                        Cancelar
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

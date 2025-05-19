@@ -1,0 +1,51 @@
+<!-- templates/orders/lista_pedidos.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Pedidos Activos</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for pedido in pedidos %}
+        <div class="bg-white shadow-md rounded-lg p-4">
+            <h2 class="text-xl font-semibold mb-2">
+                Pedido #{{ pedido.id }} - Mesa {{ pedido.mesa.numero }}
+            </h2>
+            <p class="text-gray-600 mb-2">
+                Estado: {{ pedido.get_estado_display }}
+            </p>
+            <p class="font-bold mb-2">Total: ${{ pedido.monto_total }}</p>
+            
+            <div class="mt-4">
+                <h3 class="font-semibold mb-2">Detalles:</h3>
+                {% for detalle in pedido.detalles.all %}
+                <div class="flex justify-between">
+                    <span>{{ detalle.producto.nombre }}</span>
+                    <span>{{ detalle.cantidad }} x ${{ detalle.precio_unitario }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-4 space-x-2">
+                <form method="post" action="{% url 'cambiar_estado_pedido' pedido.id %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="en_preparacion">
+                    <button type="submit" class="bg-blue-500 text-white px-3 py-1 rounded">
+                        En Preparación
+                    </button>
+                </form>
+                <form method="post" action="{% url 'cambiar_estado_pedido' pedido.id %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="listo">
+                    <button type="submit" class="bg-green-500 text-white px-3 py-1 rounded">
+                        Listo
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-gray-600">No hay pedidos activos</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

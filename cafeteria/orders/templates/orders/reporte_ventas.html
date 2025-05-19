@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h1>Reporte de Ventas</h1>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Ventas Diarias</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Total Ventas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venta in ventas_diarias %}
+                    <tr>
+                        <td>{{ venta.fecha_creacion__date }}</td>
+                        <td>{{ venta.total_ventas }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="col-md-6">
+            <h2>Estado de Pedidos</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for estado in estado_pedidos %}
+                    <tr>
+                        <td>{{ estado.estado }}</td>
+                        <td>{{ estado.cantidad }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <h2>Top 10 Productos Más Vendidos</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for producto in productos_top %}
+            <tr>
+                <td>{{ producto.producto__nombre }}</td>
+                <td>{{ producto.cantidad_total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

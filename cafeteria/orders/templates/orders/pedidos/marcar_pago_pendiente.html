@@ -1,0 +1,55 @@
+
+<!-- templates/orders/marcar_pago_pendiente.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h2>Registrar Pago de Cuenta Pendiente</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5>Cliente: {{ pago_pendiente.cliente_nombre }}</h5>
+                    <h5>Pedido #: {{ pago_pendiente.pago.pedido.id }}</h5>
+                </div>
+                <div class="col-md-6">
+                    <h5>Fecha Promesa: {{ pago_pendiente.fecha_promesa|date:"d/m/Y" }}</h5>
+                    <h5>Monto a Pagar: ${{ pago_pendiente.pago.monto|floatformat:2 }}</h5>
+                </div>
+            </div>
+            
+            {% if pago_pendiente.notas_adicionales %}
+            <div class="alert alert-info">
+                <strong>Notas:</strong> {{ pago_pendiente.notas_adicionales }}
+            </div>
+            {% endif %}
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="form-label">Método de pago</label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="metodo_pago" id="efectivo" value="efectivo" checked>
+                        <label class="form-check-label" for="efectivo">
+                            Efectivo
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="metodo_pago" id="tarjeta" value="tarjeta">
+                        <label class="form-check-label" for="tarjeta">
+                            Tarjeta de crédito/débito (POS externo)
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'orders:pagos_pendientes' %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-success">Confirmar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

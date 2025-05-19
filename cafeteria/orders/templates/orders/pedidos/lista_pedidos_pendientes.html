@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Pedidos Pendientes</h1>
+            {% for pedido in pedidos %}
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <span>
+                        Pedido #{{ pedido.id }} 
+                        {% if pedido.mesa %}
+                            - Mesa {{ pedido.mesa.numero }}
+                        {% else %}
+                            - {{ pedido.tipo_orden.nombre }}
+                            {% if pedido.numero_orden %}
+                                ({{ pedido.numero_orden }})
+                            {% endif %}
+                        {% endif %}
+                        {% if pedido.nombre_cliente %}
+                            - {{ pedido.nombre_cliente }}
+                        {% endif %}
+                    </span>
+                    <small>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                </div>
+                <div class="card-body">
+                    {% for area, detalles in pedido.detalles_por_area.items %}
+                    <h5 class="card-title">{{ area|capfirst }}</h5>
+                    <ul class="list-group mb-3">
+                        {% for detalle in detalles %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ detalle.cantidad }}x {{ detalle.producto.nombre }}
+                            <span class="badge
+                                {% if detalle.estado == 'pendiente' %}bg-warning
+                                {% elif detalle.estado == 'en_preparacion' %}bg-info
+                                {% elif detalle.estado == 'listo' %}bg-success
+                                {% elif detalle.estado == 'entregado' %}bg-primary
+                                {% else %}bg-danger{% endif %}
+                            ">
+                                {{ detalle.get_estado_display }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endfor %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Total: ${{ pedido.monto_total|floatformat:0 }}</h4>
+                        <div>
+                            <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-sync"></i> Actualizar Estado
+                            </a>
+                            <!-- Código modificado para los botones de acción -->
+                            <div class="d-flex justify-content-end">
+                                {% if pedido.puede_cerrarse %}
+                                <a href="{% url 'orders:procesar_pago' pedido.id %}" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Cerrar Pedido
+                                </a>
+                                {% else %}
+                                <button class="btn btn-secondary" disabled title="Todos los productos deben estar listos o cancelados">
+                                    <i class="fas fa-check"></i> Cerrar Pedido
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="alert alert-info text-center" role="alert">
+                No hay pedidos pendientes
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

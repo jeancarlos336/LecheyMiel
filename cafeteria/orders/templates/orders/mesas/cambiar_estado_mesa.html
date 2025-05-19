@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="col-md-6">
+            <h1 class="display-6 mb-0">Cambiar Estado de Mesa</h1>
+            <p class="text-muted">Mesa {{ mesa.numero }} - Estado actual: {{ mesa.get_estado_display }}</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <a href="{% url 'orders:lista_mesas' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Volver a la lista
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="disponible">
+                        <button type="submit" class="btn btn-success w-100 py-3 
+                            {% if mesa.estado == 'disponible' %}disabled{% endif %}"
+                            {% if mesa.estado == 'disponible' %}aria-disabled="true"{% endif %}>
+                            <h5 class="mb-1">Disponible</h5>
+                            <small class="text-white-50">Mesa libre para nuevos clientes</small>
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-3">
+                    <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="ocupada">
+                        <button type="submit" class="btn btn-danger w-100 py-3 
+                            {% if mesa.estado == 'ocupada' %}disabled{% endif %}"
+                            {% if mesa.estado == 'ocupada' %}aria-disabled="true"{% endif %}>
+                            <h5 class="mb-1">Ocupada</h5>
+                            <small class="text-white-50">Mesa con clientes actuales</small>
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-3">
+                    <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="reservada">
+                        <button type="submit" class="btn btn-warning w-100 py-3 
+                            {% if mesa.estado == 'reservada' %}disabled{% endif %}"
+                            {% if mesa.estado == 'reservada' %}aria-disabled="true"{% endif %}>
+                            <h5 class="mb-1">Reservada</h5>
+                            <small class="text-white-50">Mesa apartada para reservación</small>
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-3">
+                    <form action="{% url 'orders:cambiar_estado_mesa' mesa.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="mantenimiento">
+                        <button type="submit" class="btn btn-secondary w-100 py-3 
+                            {% if mesa.estado == 'mantenimiento' %}disabled{% endif %}"
+                            {% if mesa.estado == 'mantenimiento' %}aria-disabled="true"{% endif %}>
+                            <h5 class="mb-1">Mantenimiento</h5>
+                            <small class="text-white-50">Mesa no disponible por reparación</small>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="border-top mt-4 pt-4">
+                <h4 class="mb-3">Información Adicional</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Capacidad</h6>
+                                <p class="card-text">{{ mesa.capacidad }} personas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Última Actualización</h6>
+                                <p class="card-text">{{ mesa.ultima_actualizacion|date:"d/m/Y H:i" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% if mesa.notas %}
+                    <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted">Notas</h6>
+                                <p class="card-text">{{ mesa.notas }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

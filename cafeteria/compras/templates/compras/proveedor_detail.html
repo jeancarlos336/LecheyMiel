@@ -1,0 +1,63 @@
+<!-- compras/templates/compras/proveedor_detail.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ proveedor.nombre }} | Sistema de Compras{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ proveedor.nombre }}</h1>
+        <div>
+            <a href="{% url 'compras:proveedor_update' proveedor.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+            <a href="{% url 'compras:proveedor_delete' proveedor.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Eliminar
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Información del Proveedor</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Teléfono:</strong> {{ proveedor.telefono|default:"No registrado" }}</p>
+                    <p><strong>Email:</strong> {{ proveedor.email|default:"No registrado" }}</p>
+                    <p><strong>Dirección:</strong> {{ proveedor.direccion|default:"No registrada" }}</p>
+                    <p><strong>Notas:</strong> {{ proveedor.notas|default:"Sin notas adicionales" }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Compras Realizadas</h5>
+                </div>
+                <div class="card-body">
+                    {% if compras %}
+                    <div class="list-group">
+                        {% for compra in compras %}
+                        <a href="{% url 'compras:compra_detail' compra.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ compra.fecha }} - {{ compra.get_tipo_documento_display }} {{ compra.numero_documento|default:"S/N" }}</h6>
+                                <span class="text-primary">${{ compra.total }}</span>
+                            </div>
+                            <small>{{ compra.detalle|truncatechars:100 }}</small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Este proveedor no tiene compras registradas.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

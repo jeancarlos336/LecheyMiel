@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+{% load producto_templatetags %}
+
+{% block content %}
+<!-- Añade esto al inicio del contenido -->
+<div id="csrf-token" style="display:none;">{% csrf_token %}</div>
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">
+                    <i class="fas {% if area.nombre == 'cocina' %}fa-utensils{% else %}fa-glass-martini-alt{% endif %}"></i>
+                    Pedidos para {{ area.get_nombre_display }}
+                </h1>
+                {% block header_actions %}
+                <div class="btn-group" role="group">
+                    <a href="#" class="btn btn-sm btn-outline-secondary active" id="btn-pendientes">
+                        <i class="fas fa-clock"></i> Pendientes
+                    </a>
+                    <a href="#" class="btn btn-sm btn-outline-secondary" id="btn-en-proceso">
+                        <i class="fas fa-spinner"></i> En Proceso
+                    </a>
+                    <a href="#" class="btn btn-sm btn-outline-secondary" id="btn-listo">
+                        <i class="fas fa-check-circle"></i> Listo
+                    </a>
+                </div>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            {% for pedido_data in pedidos %}
+            <div class="card mb-4 pedido-card" data-estado="{{ pedido_data.pedido.estado }}" 
+                 data-pedido-id="{{ pedido_data.pedido.id }}">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            Pedido #{{ pedido_data.pedido.id }} 
+                            {% if pedido_data.pedido.mesa %}
+                                - Mesa {{ pedido_data.pedido.mesa.numero }}
+                            {% else %}
+                                - {{ pedido_data.pedido.tipo_orden.nombre }}
+                                {% if pedido_data.pedido.numero_orden %}
+                                    ({{ pedido_data.pedido.numero_orden }})
+                                {% endif %}
+                            {% endif %}
+                        </h5>
+                        <small>
+                            <i class="far fa-clock"></i> 
+                            <span class="timer-cell" data-start-time="{{ pedido_data.pedido.fecha_creacion|date:'c' }}">
+                                {{ pedido_data.pedido.fecha_creacion|timesince }}
+                            </span>
+                            {% if pedido_data.pedido.nombre_cliente %}
+                                | <i class="far fa-user"></i> {{ pedido_data.pedido.nombre_cliente }}
+                            {% endif %}
+                        </small>
+                    </div>
+                    <div>
+                        <span class="badge bg-light text-dark me-2">
+                            {{ pedido_data.pedido.numero_comensales }} <i class="fas fa-user"></i>
+                        </span>
+                        <span class="badge bg-info">
+                            {{ pedido_data.detalles|length }} ítems
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-start" style="width: 40%">Producto</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-center">Tiempo</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for detalle in pedido_data.detalles %}
+                                <tr class="item-row" data-item-id="{{ detalle.id }}" 
+                                    data-estado="{{ detalle.estado }}"
+                                    data-start-time="{{ detalle.hora_solicitud|date:'c' }}">
+                                    <td class="text-start">
+                                        {{ detalle.producto.nombre }}
+                                        {% if detalle.notas %}
+                                        <br><small class="text-muted">{{ detalle.notas }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">{{ detalle.cantidad }}</td>
+                                    <td class="text-center timer-cell" data-start-time="{{ detalle.hora_solicitud|date:'c' }}">
+                                        {{ detalle.hora_solicitud|timesince }}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge estado-badge 
+                                            {% if detalle.estado == 'pendiente' %}bg-secondary
+                                            {% elif detalle.estado == 'en_preparacion' %}bg-warning
+                                            {% elif detalle.estado == 'listo' %}bg-success
+                                            {% elif detalle.estado == 'entregado' %}bg-primary
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ detalle.get_estado_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-outline-primary btn-cambiar-estado" 
+                                                data-item-id="{{ detalle.id }}" 
+                                                data-estado="en_preparacion"
+                                                {% if detalle.estado != 'pendiente' %}disabled{% endif %}
+                                                title="Comenzar preparación">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <button class="btn btn-outline-success btn-cambiar-estado" 
+                                                data-item-id="{{ detalle.id }}" 
+                                                data-estado="listo"
+                                                {% if detalle.estado != 'en_preparacion' %}disabled{% endif %}
+                                                title="Marcar como listo">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-cambiar-estado" 
+                                                data-item-id="{{ detalle.id }}" 
+                                                data-estado="cancelado"  
+                                                {% if detalle.estado|in_list:"cancelado,entregado" %}disabled{% endif %}
+                                                title="Cancelar ítem">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                {% if pedido_data.pedido.notas %}
+                <div class="card-footer bg-light">
+                    <strong><i class="fas fa-sticky-note"></i> Notas:</strong> {{ pedido_data.pedido.notas }}
+                </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="alert alert-info text-center py-4">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <h4>No hay pedidos pendientes para {{ area.get_nombre_display }}</h4>
+                <p class="mb-0">Los nuevos pedidos aparecerán aquí automáticamente</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block javascript %}
+<script src="{% static 'js/preparacion.js' %}"></script>
+{% endblock %}

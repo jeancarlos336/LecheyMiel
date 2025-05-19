@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <link rel="icon" type="image/x-icon" href="{% static 'img/icono.ico' %}">
+    <title>{% block title %}Sistema de Cafetería{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Toastr CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+
+
+    
+    <!-- Custom CSS -->
+    {% block extra_css %}{% endblock %}
+    
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .main-content {
+            flex: 1;
+            padding: 2rem 0;
+        }
+        .footer {
+            margin-top: auto;
+            padding: 1rem 0;
+            background-color: #343a40;
+            color: white;
+        }
+        .card {
+            border-radius: 10px;
+            border: none;
+        }
+        .card-header {
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'users:dashboard' %}">
+                <i class="fas fa-coffee me-2"></i>Sistema de Cafetería
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        {% if user.rol.nombre == 'administrador' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:usuario_list' %}">
+                                <i class="fas fa-users me-1"></i> Usuarios
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {% if user.foto_perfil %}
+                                    <img src="{{ user.foto_perfil.url }}" alt="{{ user.get_full_name }}" class="rounded-circle me-1" width="24" height="24">
+                                {% else %}
+                                    <i class="fas fa-user-circle me-1"></i>
+                                {% endif %}
+                                {{ user.get_full_name|default:user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'users:perfil' %}">
+                                        <i class="fas fa-id-card me-2"></i> Mi Perfil
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'users:cambiar_contrasena' %}">
+                                        <i class="fas fa-key me-2"></i> Cambiar Contraseña
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'users:logout' %}">
+                                        <i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión
+                                    </a>
+                                </li>
+                            </ul>
+                            
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:login' %}">
+                                <i class="fas fa-sign-in-alt me-1"></i> Iniciar Sesión
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="mb-0">Sistema de Cafetería &copy; {% now "Y" %} - Todos los derechos reservados Juan Carlos O.</p>
+        </div>
+    </footer>
+    
+    <!-- JavaScript Libraries -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="{% static 'js/preparacion.js' %}"></script>
+  
+
+    
+    <!-- Fix Dropdown Issue -->
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Debug inicial
+        console.log("🟢 Script base cargado. Ruta ACTUAL:", window.location.pathname);
+    
+        // 1. Inicialización de dropdowns de Bootstrap
+        var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+        var dropdownList = dropdownElementList.map(function(dropdownToggleEl) {
+            return new bootstrap.Dropdown(dropdownToggleEl);
+        });
+
+        // 2. Configuración del sistema de actividad
+        const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+        let activityTimeout;
+        window.lastActivityUpdate = null;
+        
+        // 3. Función mejorada para verificar rutas excluidas
+        function shouldSkipActivityUpdate() {
+            // Utiliza window.location.pathname.includes para una coincidencia más amplia
+            const currentPath = window.location.pathname;
+            
+            // Verifica si la ruta actual contiene 'venta-express'
+            if (currentPath.includes('venta-express')) {
+                console.log("🚫 Ruta de venta express detectada - actualizaciones desactivadas");
+                return true;
+            }
+            
+            // Mantén tus otras exclusiones
+            const excludedPatterns = [
+                /^\/pedidos\/pedido\/\d+\/procesar-pago\/?$/i,
+                /^\/pedidos\/seleccionar-tipo-orden\/?$/i
+            ];
+            
+            return excludedPatterns.some(pattern => pattern.test(currentPath));
+        }
+
+        // 4. Función de actualización de actividad con doble protección
+        function updateUserActivity() {
+            if (shouldSkipActivityUpdate() || window.disableActivityUpdates) {
+                console.log("⏸️ Actualización de actividad omitida (ruta excluida o desactivada)");
+                return Promise.resolve(); // Retorna una promesa resuelta para evitar errores
+            }
+            
+            console.log("🔄 Actualizando actividad de usuario...");
+            return fetch('/usuarios/update_activity/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Error en la respuesta');
+                console.log("✔️ Actividad actualizada correctamente");
+                return response;
+            })
+            .catch(error => {
+                console.error("❌ Error al actualizar actividad:", error);
+                throw error;
+            });
+        }
+
+        // 5. Controlador de eventos optimizado
+        function handleUserActivity() {
+            if (shouldSkipActivityUpdate()) {
+                console.log("⚡ Actividad detectada en ruta excluida - No se actualizará");
+                return;
+            }
+            
+            clearTimeout(activityTimeout);
+            activityTimeout = setTimeout(() => {
+                if (!window.lastActivityUpdate || (Date.now() - window.lastActivityUpdate) > 10000) {
+                    window.lastActivityUpdate = Date.now();
+                    updateUserActivity();
+                }
+            }, 500); // Pequeño delay para agrupar eventos
+        }
+
+        // 6. Registrar event listeners
+        events.forEach(event => {
+            document.addEventListener(event, handleUserActivity, {passive: true});
+        });
+
+        // 7. Función para obtener cookies (sin cambios)
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        // 8. Opcional: Desactivar completamente si es necesario
+        if (shouldSkipActivityUpdate()) {
+            console.log("🚫 Auto-refresh desactivado permanentemente para esta ruta");
+            window.disableActivityUpdates = true;
+        }
+    });
+</script>
+    <!-- Custom JS -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

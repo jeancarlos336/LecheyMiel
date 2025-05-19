@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Usuario{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Detalle de Usuario: {{ usuario.username }}</h4>
+                        <div>
+                            <a href="{% url 'users:usuario_update' usuario.id %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <a href="{% url 'users:usuario_list' %}" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            {% if usuario.foto_perfil %}
+                                <img src="{{ usuario.foto_perfil.url }}" alt="{{ usuario.get_full_name }}" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                            {% else %}
+                                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 150px; height: 150px; margin: 0 auto;">
+                                    <span style="font-size: 3rem;">{{ usuario.first_name|first|upper }}{{ usuario.last_name|first|upper }}</span>
+                                </div>
+                            {% endif %}
+                            
+                            <div>
+                                {% if usuario.esta_activo %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactivo</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <table class="table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Nombre completo:</th>
+                                        <td>{{ usuario.get_full_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Nombre de usuario:</th>
+                                        <td>{{ usuario.username }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Correo electrónico:</th>
+                                        <td>{{ usuario.email }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Teléfono:</th>
+                                        <td>{{ usuario.telefono|default:"No especificado" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Rol:</th>
+                                        <td>{{ usuario.rol|default:"Sin rol asignado" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Fecha de registro:</th>
+                                        <td>{{ usuario.date_joined|date:"d/m/Y H:i" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Último acceso:</th>
+                                        <td>{{ usuario.last_login|date:"d/m/Y H:i"|default:"Nunca" }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

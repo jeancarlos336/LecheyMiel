@@ -1,0 +1,30 @@
+<!-- compras/templates/compras/proveedor_confirm_delete.html -->
+{% extends "base.html" %}
+
+{% block title %}Eliminar Proveedor | Sistema de Compras{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h2>Eliminar Proveedor</h2>
+        </div>
+        <div class="card-body">
+            <p class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                ¿Estás seguro de que deseas eliminar al proveedor <strong>{{ object.nombre }}</strong>?
+                <br>
+                Esta acción no se puede deshacer y se eliminarán todas las compras asociadas a este proveedor.
+            </p>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'compras:proveedor_detail' object.id %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
