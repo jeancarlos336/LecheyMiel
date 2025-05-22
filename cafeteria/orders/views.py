@@ -12,19 +12,17 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView,View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_POST
-from datetime import datetime
+from datetime import datetime,date
 from django.db.models import Q,Sum
 import json
 from django.utils import timezone
 from django.core.paginator import Paginator
 from decimal import Decimal
 
-
-
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-import datetime
+
 
 #trabajo con las mesas
 @login_required
@@ -459,6 +457,7 @@ def imprimir_recibo_pedido(request, pedido_id):
 
     return render(request, 'orders/pedidos/imprimir_recibo.html', {
         'pago': pago,
+        'pedido': pedido,
         'detalles_activos': detalles_activos,
         'total_correcto': total_correcto,
         'cambio_correcto': cambio_correcto
@@ -1037,7 +1036,8 @@ class VentaExpressView(LoginRequiredMixin, View):
         tipo_orden_express = TipoOrden.objects.get(codigo='EXPRESS')
         
         # Fecha actual para mostrar en la interfaz
-        today = datetime.date.today()
+
+        today = date.today()
         
         context = {
             'categorias': categorias,

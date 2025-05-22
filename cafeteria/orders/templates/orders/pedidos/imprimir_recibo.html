@@ -154,6 +154,10 @@
                 <div class="receipt-divider"></div>
                
                 <div class="receipt-footer">
+                    <p>Atendido por: {{ pedido.mesero.get_full_name }}</p>
+                    {% if pedido.cajero %}
+                    <p>Cobrado por: {{ pedido.cajero.get_full_name }}</p>
+                    {% endif %}
                     <p>¡Gracias por su preferencia!</p>
                     <p>Lo esperamos pronto</p>
                     <p>{{ pago.fecha|date:"d/m/Y H:i" }}</p>
