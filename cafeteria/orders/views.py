@@ -141,11 +141,12 @@ def tomar_pedido(request, mesa_id):
         messages.error(request, "No tienes permisos para tomar pedidos.")
         return redirect('home')
 
-    # Obtener pedido existente o crear uno nuevo
-    pedido_existente = Pedido.objects.filter(
-        mesa=mesa,
-        estado__in=['pendiente', 'en_preparacion']
-    ).first()
+    # Obtener categorías y productos disponibles
+    categorias = Categoria.objects.all()
+    productos_por_categoria = {
+        categoria: Producto.objects.filter(categoria=categoria, esta_disponible=True)
+        for categoria in categorias
+    }
 
     if request.method == 'POST':
         with transaction.atomic():
@@ -158,37 +159,53 @@ def tomar_pedido(request, mesa_id):
                 pedido = Pedido.objects.create(
                     mesa=mesa,
                     mesero=mesero,
-                    tipo_orden=tipo_orden_local,  # Añadimos el tipo de orden LOCAL
+                    tipo_orden=tipo_orden_local,
                     estado='pendiente',
                     monto_total=0,
                     estado_pago='pendiente',
                     numero_comensales=request.POST.get('numero_comensales', 1)
-                    # Eliminamos para_llevar que ya no existe
                 )
-                pedido_existente = pedido  # Actualizar referencia
-
-            # El resto de la función se mantiene igual...
+                pedido_existente = pedido
 
             action = request.POST.get('action')
             
-            # Código para agregar producto
             if action == 'add_producto':
                 # Procesar detalle del pedido
                 producto_id = request.POST.get('producto_id')
                 cantidad = int(request.POST.get('cantidad', 1))
-                notas = request.POST.get('notas', '')  # Capturar las notas del formulario
+                notas = request.POST.get('notas', '')
                 producto = get_object_or_404(Producto, id=producto_id)
 
-                DetallePedido.objects.create(
+                # Verificar si el producto ya existe en el pedido
+                detalle_existente = DetallePedido.objects.filter(
                     pedido=pedido_existente,
                     producto=producto,
-                    cantidad=cantidad,
-                    precio_unitario=producto.precio,
-                    notas=notas,  # Guardar las notas
+                    notas=notas,
                     estado='pendiente'
-                )
+                ).first()
+
+                if detalle_existente:
+                    # Si ya existe, actualizar la cantidad
+                    detalle_existente.cantidad += cantidad
+                    detalle_existente.save()
+                else:
+                    # Si no existe, crear nuevo detalle
+                    DetallePedido.objects.create(
+                        pedido=pedido_existente,
+                        producto=producto,
+                        cantidad=cantidad,
+                        precio_unitario=producto.precio,
+                        notas=notas,
+                        estado='pendiente'
+                    )
 
                 pedido_existente.calcular_total()
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Producto {producto.nombre} agregado al pedido.'
+                    })
                 messages.success(request, f'Producto {producto.nombre} agregado al pedido.')
                 return redirect('orders:tomar_pedido', mesa_id=mesa.id)
                 
@@ -202,9 +219,21 @@ def tomar_pedido(request, mesa_id):
                     producto_nombre = detalle.producto.nombre
                     detalle.delete()
                     pedido_existente.calcular_total()
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Producto {producto_nombre} eliminado del pedido.'
+                        })
                     messages.success(request, f'Producto {producto_nombre} eliminado del pedido.')
                 except DetallePedido.DoesNotExist:
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'No se encontró el detalle del pedido'
+                        }, status=404)
                     messages.error(request, 'No se encontró el detalle del pedido')
+                
                 return redirect('orders:tomar_pedido', mesa_id=mesa.id)
             
             elif action == 'update_nota':
@@ -217,33 +246,69 @@ def tomar_pedido(request, mesa_id):
                     )
                     detalle.notas = nota
                     detalle.save()
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Nota actualizada correctamente.'
+                        })
                     messages.success(request, 'Nota actualizada correctamente.')
                 except DetallePedido.DoesNotExist:
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'No se encontró el detalle del pedido'
+                        }, status=404)
                     messages.error(request, 'No se encontró el detalle del pedido')
+                
                 return redirect('orders:tomar_pedido', mesa_id=mesa.id)
+            
+            elif action == 'update_cantidad':
+                detalle_id = request.POST.get('detalle_id')
+                cantidad = int(request.POST.get('cantidad', 1))
+                try:
+                    detalle = DetallePedido.objects.get(
+                        id=detalle_id,
+                        pedido=pedido_existente
+                    )
+                    detalle.cantidad = cantidad
+                    detalle.save()
+                    pedido_existente.calcular_total()
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'subtotal': detalle.subtotal,
+                        'total': pedido_existente.monto_total
+                    })
+                except DetallePedido.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'No se encontró el detalle del pedido'
+                    }, status=404)
 
-    # Obtener categorías y productos
-    categorias = Categoria.objects.all()
-    
+    # Manejar parámetro de categoría activa
+    categoria_activa = request.GET.get('categoria')
+    if not categoria_activa and categorias.exists():
+        categoria_activa = categorias.first().id
+
     # Recalcular total por si hubo cambios
     if pedido_existente:
         pedido_existente.calcular_total()
         total_pedido = pedido_existente.monto_total
     else:
         total_pedido = 0
+
     context = {
         'mesa': mesa,
         'pedido_existente': pedido_existente,
         'categorias': categorias,
-        'productos_por_categoria': {
-            categoria: Producto.objects.filter(categoria=categoria)
-            for categoria in categorias
-        },
+        'productos_por_categoria': productos_por_categoria,
         'total_pedido': total_pedido,
-        'tipo_orden': tipo_orden_local  # Reemplazamos para_llevar con tipo_orden
-    }    
+        'tipo_orden': tipo_orden_local,
+        'categoria_activa': int(categoria_activa) if categoria_activa else None
+    }
+    
     return render(request, 'orders/pedidos/tomar_pedido.html', context)
-
 
 @login_required
 def detalle_pedido(request, pedido_id):
@@ -852,6 +917,8 @@ def seleccionar_tipo_orden(request):
     }
     
     return render(request, 'orders/pedidos/seleccionar_tipo_orden.html', context)
+
+###################
 @login_required
 def crear_pedido_para_llevar(request, tipo_orden_id):
     """
@@ -875,28 +942,50 @@ def crear_pedido_para_llevar(request, tipo_orden_id):
         action = request.POST.get('action')
         
         if action == 'create_pedido':
-            nombre_cliente = request.POST.get('nombre_cliente')
+            nombre_cliente = request.POST.get('nombre_cliente', '').strip()
             
             if not nombre_cliente:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'error': "El nombre del cliente es obligatorio."
+                    }, status=400)
                 messages.error(request, "El nombre del cliente es obligatorio.")
                 return redirect('orders:crear_pedido_para_llevar', tipo_orden_id=tipo_orden.id)
             
             # Crear nuevo pedido para llevar
-            with transaction.atomic():
-                pedido = Pedido.objects.create(
-                    tipo_orden=tipo_orden,
-                    mesero=mesero,
-                    mesa=None,  # Sin mesa para pedidos para llevar
-                    estado='pendiente',
-                    monto_total=0,
-                    estado_pago='pendiente',
-                    nombre_cliente=nombre_cliente
-                )
-                
-                # El número de orden se generará automáticamente en el método save() del modelo
-                
-                messages.success(request, f"Pedido para llevar creado correctamente. Número de orden: {pedido.numero_orden}")
-                return redirect('orders:tomar_pedido_para_llevar', tipo_orden_id=tipo_orden.id, pedido_id=pedido.id)
+            try:
+                with transaction.atomic():
+                    pedido = Pedido.objects.create(
+                        tipo_orden=tipo_orden,
+                        mesero=mesero,
+                        mesa=None,  # Sin mesa para pedidos para llevar
+                        estado='pendiente',
+                        monto_total=0,
+                        estado_pago='pendiente',
+                        nombre_cliente=nombre_cliente
+                    )
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'pedido_id': pedido.id,
+                            'numero_orden': pedido.numero_orden,
+                            'redirect_url': reverse('orders:tomar_pedido_para_llevar', 
+                                                 kwargs={'tipo_orden_id': tipo_orden.id, 'pedido_id': pedido.id})
+                        })
+                    
+                    messages.success(request, f"Pedido para llevar creado correctamente. Número de orden: {pedido.numero_orden}")
+                    return redirect('orders:tomar_pedido_para_llevar', tipo_orden_id=tipo_orden.id, pedido_id=pedido.id)
+                    
+            except Exception as e:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'error': f"Error al crear el pedido: {str(e)}"
+                    }, status=500)
+                messages.error(request, f"Error al crear el pedido: {str(e)}")
+                return redirect('orders:crear_pedido_para_llevar', tipo_orden_id=tipo_orden.id)
     
     # Generar un número de orden temporal para mostrar (no se guardará hasta crear el pedido)
     ultimo_numero = Pedido.objects.filter(
@@ -914,13 +1003,12 @@ def crear_pedido_para_llevar(request, tipo_orden_id):
         'tipo_orden': tipo_orden,
         'numero_orden': numero_orden_temp,
         'categorias': categorias,
-        # Añadir productos por categoría - usando esta_disponible en lugar de activo
         'productos_por_categoria': {
             categoria: Producto.objects.filter(categoria=categoria, esta_disponible=True)
             for categoria in categorias
         },
-        # Establecer categoría activa por defecto
-        'categoria_activa': categorias.first().id if categorias.exists() else None
+        'categoria_activa': categorias.first().id if categorias.exists() else None,
+        'es_creacion': True
     }
     
     return render(request, 'orders/pedidos/tomar_pedido_para_llevar.html', context)
@@ -935,67 +1023,232 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
     
     # Verificar que el pedido no tenga mesa asignada
     if pedido.mesa:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': "Este no es un pedido para llevar."
+            }, status=400)
         messages.error(request, "Este no es un pedido para llevar.")
         return redirect('orders:seleccionar_tipo_orden')
     
+    # Obtener categorías y productos disponibles
+    categorias = Categoria.objects.all()
+    productos_por_categoria = {
+        categoria: Producto.objects.filter(categoria=categoria, esta_disponible=True)
+        for categoria in categorias
+    }
+
     if request.method == 'POST':
-        with transaction.atomic():
-            action = request.POST.get('action')
-            
-            if action == 'add_producto':
-                # Procesar detalle del pedido
-                producto_id = request.POST.get('producto_id')
-                cantidad = int(request.POST.get('cantidad', 1))
-                notas = request.POST.get('notas', '')
-                producto = get_object_or_404(Producto, id=producto_id)
+        action = request.POST.get('action')
+        
+        try:
+            with transaction.atomic():
+                if action == 'add_producto':
+                    # Procesar detalle del pedido
+                    producto_id = request.POST.get('producto_id')
+                    cantidad = int(request.POST.get('cantidad', 1))
+                    notas = request.POST.get('notas', '').strip()
+                    
+                    if not producto_id:
+                        raise ValueError("ID de producto requerido")
+                    
+                    if cantidad <= 0:
+                        raise ValueError("La cantidad debe ser mayor a 0")
+                    
+                    producto = get_object_or_404(Producto, id=producto_id)
 
-                DetallePedido.objects.create(
-                    pedido=pedido,
-                    producto=producto,
-                    cantidad=cantidad,
-                    precio_unitario=producto.precio,
-                    notas=notas,
-                    estado='pendiente'
-                )
+                    # Verificar si el producto ya existe en el pedido con las mismas notas
+                    detalle_existente = DetallePedido.objects.filter(
+                        pedido=pedido,
+                        producto=producto,
+                        notas=notas,
+                        estado='pendiente'
+                    ).first()
 
-                pedido.calcular_total()
-                messages.success(request, f'Producto {producto.nombre} agregado al pedido.')
-                
-            elif action == 'remove_producto':
-                detalle_id = request.POST.get('detalle_id')
-                try:
-                    detalle = DetallePedido.objects.get(
-                        id=detalle_id,
-                        pedido=pedido
-                    )
+                    if detalle_existente:
+                        # Si ya existe, actualizar la cantidad
+                        detalle_existente.cantidad += cantidad
+                        detalle_existente.save()
+                        message = f'Cantidad de {producto.nombre} actualizada (+{cantidad})'
+                    else:
+                        # Si no existe, crear nuevo detalle
+                        detalle_existente = DetallePedido.objects.create(
+                            pedido=pedido,
+                            producto=producto,
+                            cantidad=cantidad,
+                            precio_unitario=producto.precio,
+                            notas=notas,
+                            estado='pendiente'
+                        )
+                        message = f'Producto {producto.nombre} agregado al pedido'
+
+                    pedido.calcular_total()
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': message,
+                            'total': float(pedido.monto_total),
+                            'detalle_id': detalle_existente.id,
+                            'cantidad_total': detalle_existente.cantidad
+                        })
+                    
+                    messages.success(request, message)
+                    
+                elif action == 'remove_producto':
+                    detalle_id = request.POST.get('detalle_id')
+                    
+                    if not detalle_id:
+                        raise ValueError("ID de detalle requerido")
+                    
+                    detalle = get_object_or_404(DetallePedido, id=detalle_id, pedido=pedido)
                     producto_nombre = detalle.producto.nombre
                     detalle.delete()
                     pedido.calcular_total()
-                    messages.success(request, f'Producto {producto_nombre} eliminado del pedido.')
-                except DetallePedido.DoesNotExist:
-                    messages.error(request, 'No se encontró el detalle del pedido')
                     
-            elif action == 'update_nota':
-                detalle_id = request.POST.get('detalle_id')
-                nota = request.POST.get('nota', '')
-                try:
-                    detalle = DetallePedido.objects.get(
-                        id=detalle_id,
-                        pedido=pedido
-                    )
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Producto {producto_nombre} eliminado del pedido',
+                            'total': float(pedido.monto_total)
+                        })
+                    
+                    messages.success(request, f'Producto {producto_nombre} eliminado del pedido.')
+                
+                # NUEVO: Manejo para incrementar cantidad
+                elif action == 'increment_cantidad':
+                    detalle_id = request.POST.get('detalle_id')
+                    
+                    if not detalle_id:
+                        raise ValueError("ID de detalle requerido")
+                    
+                    detalle = get_object_or_404(DetallePedido, id=detalle_id, pedido=pedido)
+                    detalle.cantidad += 1
+                    detalle.save()
+                    pedido.calcular_total()
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'nueva_cantidad': detalle.cantidad,
+                            'nuevo_subtotal': float(detalle.subtotal),
+                            'total': float(pedido.monto_total),
+                            'message': 'Cantidad incrementada correctamente'
+                        })
+                    
+                    messages.success(request, 'Cantidad incrementada correctamente.')
+                
+                # NUEVO: Manejo para decrementar cantidad
+                elif action == 'decrement_cantidad':
+                    detalle_id = request.POST.get('detalle_id')
+                    
+                    if not detalle_id:
+                        raise ValueError("ID de detalle requerido")
+                    
+                    detalle = get_object_or_404(DetallePedido, id=detalle_id, pedido=pedido)
+                    
+                    if detalle.cantidad > 1:
+                        detalle.cantidad -= 1
+                        detalle.save()
+                        pedido.calcular_total()
+                        
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            return JsonResponse({
+                                'success': True,
+                                'nueva_cantidad': detalle.cantidad,
+                                'nuevo_subtotal': float(detalle.subtotal),
+                                'total': float(pedido.monto_total),
+                                'message': 'Cantidad decrementada correctamente'
+                            })
+                        
+                        messages.success(request, 'Cantidad decrementada correctamente.')
+                    else:
+                        # Si la cantidad es 1, eliminar el producto completamente
+                        producto_nombre = detalle.producto.nombre
+                        detalle.delete()
+                        pedido.calcular_total()
+                        
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            return JsonResponse({
+                                'success': True,
+                                'nueva_cantidad': 0,
+                                'nuevo_subtotal': 0,
+                                'total': float(pedido.monto_total),
+                                'message': f'Producto {producto_nombre} eliminado del pedido'
+                            })
+                        
+                        messages.success(request, f'Producto {producto_nombre} eliminado del pedido.')
+                    
+                elif action == 'update_nota':
+                    detalle_id = request.POST.get('detalle_id')
+                    nota = request.POST.get('nota', '').strip()
+                    
+                    if not detalle_id:
+                        raise ValueError("ID de detalle requerido")
+                    
+                    detalle = get_object_or_404(DetallePedido, id=detalle_id, pedido=pedido)
                     detalle.notas = nota
                     detalle.save()
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Nota actualizada correctamente.'
+                        })
+                    
                     messages.success(request, 'Nota actualizada correctamente.')
-                except DetallePedido.DoesNotExist:
-                    messages.error(request, 'No se encontró el detalle del pedido')
-    
-    # Obtener categorías y productos
-    categorias = Categoria.objects.all()
-    categoria_activa = request.POST.get('categoria_activa')
-    
+                    
+                elif action == 'update_cantidad':
+                    detalle_id = request.POST.get('detalle_id')
+                    cantidad = int(request.POST.get('cantidad', 1))
+                    
+                    if not detalle_id:
+                        raise ValueError("ID de detalle requerido")
+                    
+                    if cantidad <= 0:
+                        raise ValueError("La cantidad debe ser mayor a 0")
+                    
+                    detalle = get_object_or_404(DetallePedido, id=detalle_id, pedido=pedido)
+                    cantidad_anterior = detalle.cantidad
+                    detalle.cantidad = cantidad
+                    detalle.save()
+                    pedido.calcular_total()
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'subtotal': float(detalle.subtotal),
+                            'total': float(pedido.monto_total),
+                            'cantidad_anterior': cantidad_anterior,
+                            'message': 'Cantidad actualizada correctamente'
+                        })
+                    
+                    messages.success(request, 'Cantidad actualizada correctamente.')
+                    
+                else:
+                    raise ValueError(f"Acción no válida: {action}")
+                    
+        except ValueError as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'error': str(e)
+                }, status=400)
+            messages.error(request, str(e))
+            
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Error interno del servidor: {str(e)}'
+                }, status=500)
+            messages.error(request, f'Error: {str(e)}')
+
+    # Manejar parámetro de categoría activa
+    categoria_activa = request.GET.get('categoria')
     if not categoria_activa and categorias.exists():
         categoria_activa = categorias.first().id
-    
+
     # Recalcular total
     pedido.calcular_total()
     
@@ -1003,15 +1256,14 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
         'tipo_orden': tipo_orden,
         'pedido_existente': pedido,
         'categorias': categorias,
-        'categoria_activa': categoria_activa,
-        'productos_por_categoria': {
-            categoria: Producto.objects.filter(categoria=categoria, esta_disponible=True)
-            for categoria in categorias
-        },
-        'total_pedido': pedido.monto_total
-    }    
+        'productos_por_categoria': productos_por_categoria,
+        'total_pedido': pedido.monto_total,
+        'categoria_activa': int(categoria_activa) if categoria_activa else None,
+        'es_creacion': False
+    }
     
     return render(request, 'orders/pedidos/tomar_pedido_para_llevar.html', context)
+#####################
 
 #VENTA EXPRESS
 

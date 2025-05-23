@@ -26,57 +26,21 @@
     <script>
         // Sistema de prevención temprana de actualizaciones
         (function() {
-            // Verificar inmediatamente si estamos en rutas protegidas
+            // Verificar inmediatamente si estamos en venta-express
             const currentPath = window.location.pathname;
-            
-            // Verificar venta-express
             if (currentPath.includes('venta-express')) {
                 console.log("🛑 DETECCIÓN TEMPRANA: Venta Express - Desactivando sistema de actualización");
                 // Establecer banderas globales para prevenir actualizaciones
                 window.disableActivityUpdates = true;
                 window.isVentaExpress = true;
                 window.preventRefresh = true;
-               
-                // Interceptar setTimeout para bloquear actualizaciones
+                
+                // Intentar interceptar cualquier función de actualización que se defina después
                 const originalSetTimeout = window.setTimeout;
                 window.setTimeout = function(fn, delay) {
                     if (typeof fn === 'function' && fn.toString().includes('updateUserActivity')) {
                         console.log("⚠️ Bloqueado intento de programar actualización");
                         return 999999; // ID falso
-                    }
-                    return originalSetTimeout.apply(this, arguments);
-                };
-            }
-            
-            // Verificar tomar-pedido
-            if (currentPath.includes('tomar-pedido')) {
-                console.log("🛑 DETECCIÓN TEMPRANA: Tomar Pedido - Desactivando sistema de actualización");
-                window.disableActivityUpdates = true;
-                window.isTomarPedido = true;
-                window.preventRefresh = true;
-               
-                const originalSetTimeout = window.setTimeout;
-                window.setTimeout = function(fn, delay) {
-                    if (typeof fn === 'function' && fn.toString().includes('updateUserActivity')) {
-                        console.log("⚠️ Bloqueado intento de programar actualización");
-                        return 999999;
-                    }
-                    return originalSetTimeout.apply(this, arguments);
-                };
-            }
-            
-            // Verificar crear-pedido-para-llevar
-            if (currentPath.includes('crear-pedido-para-llevar')) {
-                console.log("🛑 DETECCIÓN TEMPRANA: Crear Pedido Para Llevar - Desactivando sistema de actualización");
-                window.disableActivityUpdates = true;
-                window.isCrearPedidoParaLlevar = true;
-                window.preventRefresh = true;
-               
-                const originalSetTimeout = window.setTimeout;
-                window.setTimeout = function(fn, delay) {
-                    if (typeof fn === 'function' && fn.toString().includes('updateUserActivity')) {
-                        console.log("⚠️ Bloqueado intento de programar actualización");
-                        return 999999;
                     }
                     return originalSetTimeout.apply(this, arguments);
                 };
@@ -204,8 +168,8 @@
         console.log("🟢 Script base cargado. Ruta ACTUAL:", window.location.pathname);
         
         // IMPORTANTE: Verificar banderas de prevención definidas antes
-        if (window.isVentaExpress === true || window.isTomarPedido === true || window.isCrearPedidoParaLlevar === true || window.preventRefresh === true) {
-            console.log("🚨 Detectada página protegida - DESACTIVANDO completamente el sistema de actualización");
+        if (window.isVentaExpress === true || window.preventRefresh === true) {
+            console.log("🚨 Detectada página de venta express - DESACTIVANDO completamente el sistema de actualización");
             // No inicializar nada relacionado con actividad
             return;
         }
@@ -221,7 +185,6 @@
         let activityTimeout;
         window.lastActivityUpdate = null;
         
-       
         // 3. Función mejorada para verificar rutas excluidas
         function shouldSkipActivityUpdate() {
             const currentPath = window.location.pathname;
@@ -229,18 +192,6 @@
             // VERIFICACIÓN CRÍTICA - si incluye venta-express, SIEMPRE devolver true
             if (currentPath.includes('venta-express')) {
                 console.log("🚫 Ruta de venta express detectada - actualizaciones desactivadas");
-                return true;
-            }
-            
-            // NUEVA VERIFICACIÓN - si incluye tomar-pedido, SIEMPRE devolver true
-            if (currentPath.includes('tomar-pedido')) {
-                console.log("🚫 Ruta de tomar pedido detectada - actualizaciones desactivadas");
-                return true;
-            }
-            
-            // NUEVA VERIFICACIÓN - si incluye crear-pedido-para-llevar, SIEMPRE devolver true
-            if (currentPath.includes('crear-pedido-para-llevar')) {
-                console.log("🚫 Ruta de crear pedido para llevar detectada - actualizaciones desactivadas");
                 return true;
             }
             
@@ -252,6 +203,7 @@
             
             return excludedPatterns.some(pattern => pattern.test(currentPath));
         }
+
         // 4. Función de actualización de actividad con triple protección
         function updateUserActivity() {
             // 1ra capa: verificar rutas excluidas
@@ -266,10 +218,8 @@
                 return Promise.resolve();
             }
             
-            // 3ra capa: verificar nuevamente todas las rutas protegidas
-            if (window.location.pathname.includes('venta-express') || 
-                window.location.pathname.includes('tomar-pedido') || 
-                window.location.pathname.includes('crear-pedido-para-llevar')) {
+            // 3ra capa: verificar nuevamente venta-express (redundancia de seguridad)
+            if (window.location.pathname.includes('venta-express')) {
                 console.log("⛔ Actualización bloqueada (verificación de seguridad)");
                 return Promise.resolve();
             }
@@ -297,10 +247,7 @@
         // 5. Controlador de eventos optimizado
         function handleUserActivity() {
             // Verificación rápida antes de cualquier procesamiento
-            if (window.location.pathname.includes('venta-express') || 
-                window.location.pathname.includes('tomar-pedido') || 
-                window.location.pathname.includes('crear-pedido-para-llevar') || 
-                window.disableActivityUpdates) {
+            if (window.location.pathname.includes('venta-express') || window.disableActivityUpdates) {
                 console.log("⚡ Actividad ignorada (ruta protegida)");
                 return;
             }
@@ -348,17 +295,12 @@
     });
 </script>
 
-    <!-- Script de seguridad para páginas protegidas -->
- <script>
-        // Verificación final para todas las páginas protegidas
+    <!-- Script de seguridad para venta express -->
+    <script>
+        // Verificación final para páginas de venta express
         (function() {
-            const currentPath = window.location.pathname;
-            
-            if (currentPath.includes('venta-express') || 
-                currentPath.includes('tomar-pedido') || 
-                currentPath.includes('crear-pedido-para-llevar')) {
-                
-                console.log("🔐 Verificación final para página protegida:", currentPath);
+            if (window.location.pathname.includes('venta-express')) {
+                console.log("🔐 Verificación final para venta express");
                 
                 // Desactivar explícitamente
                 window.disableActivityUpdates = true;
@@ -367,7 +309,7 @@
                 if (window.updateUserActivity) {
                     const originalFunction = window.updateUserActivity;
                     window.updateUserActivity = function() {
-                        console.log("🛡️ Bloqueado intento de actualizar actividad en:", currentPath);
+                        console.log("🛡️ Bloqueado intento de actualizar actividad");
                         return Promise.resolve();
                     };
                 }
@@ -384,4 +326,4 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-    
+

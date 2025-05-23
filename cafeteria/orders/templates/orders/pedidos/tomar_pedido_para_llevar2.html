@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Venta Cafetería <small class="text-muted">Pedido para Llevar</small></h2>
+
+    <div class="row">
+        <!-- Productos -->
+        <div class="col-md-8">
+            <!-- Filtrado de categorías -->
+            <ul class="nav nav-tabs mb-3" id="catTabs">
+                {% for cat in categorias %}
+                <li class="nav-item">
+                    <button class="nav-link {% if cat.id == categoria_activa %}active{% endif %}" data-cat="{{ cat.id }}">
+                        {{ cat.nombre }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <div id="productosLista" class="row g-3">
+                {% for categoria, productos in productos_por_categoria.items %}
+                    {% if categoria.id == categoria_activa %}
+                        {% for producto in productos %}               
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card producto-card h-100" data-id="{{ producto.id }}">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ producto.nombre }}</h6>
+                                        <div class="mb-2"><b>${{ producto.precio|floatformat:2 }}</b></div>
+                                        <button class="btn btn-primary w-100 btn-sm btn-agregar" data-id="{{ producto.id }}">
+                                            Agregar <i class="fas fa-cart-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Carrito -->
+        <div class="col-md-4">
+            <div class="sticky-cart" id="carritoBox">
+                <h5>
+                    <span class="cart-icon me-2">🛒</span>
+                    Carrito de Pedido
+                </h5>
+                <div id="cartItems">
+                    {% if pedido_existente.detallepedido_set.all %}
+                        {% for detalle in pedido_existente.detallepedido_set.all %}
+                        <div class="cart-item d-flex justify-content-between align-items-center" data-id="{{ detalle.id }}">
+                            <div>
+                                <b>{{ detalle.producto.nombre }}</b>
+                                <div class="text-muted small">${{ detalle.precio_unitario|floatformat:2 }} c/u</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button class="btn btn-secondary btn-qty" data-action="decrement" {% if detalle.cantidad <= 1 %}disabled{% endif %}>
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <span class="mx-2 cantidad">{{ detalle.cantidad }}</span>
+                                <button class="btn btn-secondary btn-qty" data-action="increment">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <span class="mx-2"><b>${{ detalle.subtotal|floatformat:2 }}</b></span>
+                                <span class="cart-remove ms-2" title="Eliminar"><i class="fas fa-trash"></i></span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-muted small">El carrito está vacío.</div>
+                    {% endif %}
+                </div>
+                <div class="mt-3 d-flex justify-content-between align-items-center">
+                    <span><b>Total:</b></span>
+                    <span id="cartTotal" class="fs-5">${{ total_pedido|default:0|floatformat:2 }}</span>
+                </div>
+                {% if es_creacion %}
+                <button class="btn btn-success w-100 mt-3" id="btnCrearPedido">Crear Pedido</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ingresar nombre de cliente -->
+<div class="modal fade" id="modalNombreCliente" tabindex="-1" aria-labelledby="nombreClienteLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="formNombreCliente" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="nombreClienteLabel">Nombre del Cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" class="form-control" id="inputNombreCliente" placeholder="Ingrese el nombre del cliente" required>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-success">Crear Pedido</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://kit.fontawesome.com/3b038672d2.js" crossorigin="anonymous"></script>
+<script>
+const productosPorCategoria = {{ productos_por_categoria|safe }};
+const categorias = {{ categorias|safe }};
+let categoriaActiva = {{ categoria_activa|default:'null' }};
+const pedidoId = {{ pedido_existente.id|default:'null' }};
+const tipoOrdenId = {{ tipo_orden.id|default:'null' }};
+const esCreacion = {{ es_creacion|yesno:"true,false" }};
+
+function renderProductos(catId) {
+    const prodList = document.getElementById('productosLista');
+    prodList.innerHTML = '';
+    const productos = productosPorCategoria[catId] || [];
+    productos.forEach(prod => {
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4';
+        col.innerHTML = `
+            <div class="card producto-card h-100" data-id="${prod.id}">
+                <div class="card-body">
+                    <h6 class="card-title">${prod.nombre}</h6>
+                    <div class="mb-2"><b>$${prod.precio.toFixed(2)}</b></div>
+                    <button class="btn btn-primary w-100 btn-sm btn-agregar" data-id="${prod.id}">Agregar <i class="fas fa-cart-plus"></i></button>
+                </div>
+            </div>
+        `;
+        prodList.appendChild(col);
+    });
+    // attach events para agregar
+    prodList.querySelectorAll('.btn-agregar').forEach(btn => {
+        btn.onclick = () => agregarAlCarrito(btn.dataset.id);
+    });
+}
+function setCategoriaTabEvents() {
+    document.querySelectorAll('#catTabs button').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('#catTabs button').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            categoriaActiva = btn.dataset.cat;
+            renderProductos(categoriaActiva);
+        };
+    });
+}
+
+function agregarAlCarrito(productoId) {
+    // AJAX POST a la misma vista con action=add_producto
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            action: 'add_producto',
+            producto_id: productoId,
+            cantidad: 1,
+            pedido_id: pedidoId
+        })
+    })
+    .then(r=>r.json())
+    .then(res=>{
+        if(res.success) {
+            actualizarCarrito();
+        } else {
+            alert(res.error || "Error al agregar producto");
+        }
+    });
+}
+
+function actualizarCarrito() {
+    fetch(window.location.pathname + "?ajax=1", {
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r=>r.text())
+    .then(html=>{
+        // Solo actualizar el carrito
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        document.getElementById('carritoBox').innerHTML = tmp.querySelector('#carritoBox').innerHTML;
+        setCarritoEvents();
+    });
+}
+
+function setCarritoEvents() {
+    document.querySelectorAll('.cart-item').forEach(row => {
+        const detalleId = row.dataset.id;
+        // Sumar/restar cantidad
+        row.querySelectorAll('button[data-action]').forEach(btn=>{
+            btn.onclick = () => {
+                let delta = (btn.dataset.action === "increment") ? 1 : -1;
+                updateCantidad(detalleId, delta);
+            };
+        });
+        // Eliminar
+        row.querySelector('.cart-remove').onclick = () => {
+            removeProducto(detalleId);
+        };
+    });
+}
+
+function updateCantidad(detalleId, delta) {
+    // Buscar cantidad actual
+    const spanCantidad = document.querySelector(`.cart-item[data-id="${detalleId}"] .cantidad`);
+    let cantidad = parseInt(spanCantidad.textContent) + delta;
+    if (cantidad <= 0) {
+        removeProducto(detalleId);
+        return;
+    }
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            action: 'update_cantidad',
+            detalle_id: detalleId,
+            cantidad: cantidad
+        })
+    })
+    .then(r=>r.json())
+    .then(res=>{
+        if(res.success) {
+            actualizarCarrito();
+        } else {
+            alert(res.error || "Error al actualizar cantidad");
+        }
+    });
+}
+
+function removeProducto(detalleId) {
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            action: 'remove_producto',
+            detalle_id: detalleId
+        })
+    })
+    .then(r=>r.json())
+    .then(res=>{
+        if(res.success) {
+            actualizarCarrito();
+        } else {
+            alert(res.error || "Error al eliminar producto");
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Crear pedido (para la vista de creación inicial, no para editar)
+if (esCreacion && document.getElementById('btnCrearPedido')) {
+    document.getElementById('btnCrearPedido').onclick = function() {
+        let modal = new bootstrap.Modal(document.getElementById('modalNombreCliente'));
+        modal.show();
+        document.getElementById('formNombreCliente').onsubmit = function(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('inputNombreCliente').value.trim();
+            if (!nombre) return;
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    action: 'create_pedido',
+                    nombre_cliente: nombre
+                })
+            })
+            .then(r=>r.json())
+            .then(res=>{
+                if(res.success && res.redirect_url) {
+                    window.location.href = res.redirect_url;
+                } else {
+                    alert(res.error || "Error al crear pedido");
+                }
+            });
+        };
+    };
+}
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', function() {
+    setCategoriaTabEvents();
+    renderProductos(categoriaActiva);
+    setCarritoEvents();
+});
+
+// Actualización automática del carrito si AJAX
+if (!esCreacion) {
+    setInterval(actualizarCarrito, 30000); // refresca cada 30s en caso de cambios externos
+}
+</script>
+<style>
+.producto-card {
+    cursor: pointer;
+    transition: transform .1s;
+}
+.producto-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.13);
+}
+.cart-icon {
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+.btn-qty {
+    width: 2.3em;
+    height: 2.3em;
+    font-size: 1.2em;
+    padding: 0;
+}
+.cart-item {
+    border-bottom: 1px solid #e9ecef;
+    padding: 0.7em 0;
+}
+.cart-item:last-child {
+    border-bottom: none;
+}
+.cart-remove {
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 1.3em;
+    vertical-align: middle;
+}
+.cart-remove:hover {
+    color: #b02a37;
+}
+.sticky-cart {
+    position: sticky;
+    top: 2em;
+    width: 340px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    z-index: 100;
+    padding: 1.2em 1.5em;
+}
+@media (max-width: 900px) {
+    .sticky-cart {
+        position: static;
+        width: 100%;
+        margin-bottom: 2em;
+    }
+}
+</style>
+{% endblock %}

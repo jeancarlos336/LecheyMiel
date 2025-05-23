@@ -1,4 +1,3 @@
-// static/js/preparacion.js
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar tooltips de Bootstrap
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -31,17 +30,29 @@ document.addEventListener('DOMContentLoaded', function() {
     actualizarTemporizadores();
     setInterval(actualizarTemporizadores, 1000);
 
-    // Actualización automática de la página
+    // Actualización automática de la página (excepto en páginas protegidas)
+    try {
+        const path = window.location.pathname.toLowerCase();
 
-   // Actualización automática de la página (excepto en venta-express)
-    const path = window.location.pathname || '';
+        const rutasProtegidas = [
+            '/venta-express',
+            '/pedidos/tomar-pedido',
+            '/pedidos/crear-pedido-para-llevar'
+        ];
 
-    if (!path.includes('venta-express')) {
-        setTimeout(() => {
-            window.location.reload();
-        }, 30000); // 30 segundos
+        const esRutaProtegida = rutasProtegidas.some(ruta => path.startsWith(ruta));
+
+        if (!esRutaProtegida) {
+            console.log("🔄 La página se actualizará automáticamente en 30 segundos");
+            setTimeout(() => {
+                window.location.reload();
+            }, 30000);
+        } else {
+            console.log("🔒 Actualización automática desactivada para:", path);
+        }
+    } catch (error) {
+        console.error("❌ Error al verificar la ruta protegida:", error);
     }
-
 });
 
 // Funciones auxiliares

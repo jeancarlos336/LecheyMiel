@@ -190,7 +190,7 @@
         }
     }
 
-    /* Estilos para el pedido - NUEVOS ESTILOS */
+    /* Estilos para el pedido */
     .pedido-container {
         position: sticky;
         top: 20px;
@@ -198,106 +198,26 @@
         overflow-y: auto;
     }
 
-    .pedido-item {
-        border-left: 4px solid var(--primary-color);
-        transition: all 0.3s ease;
-        margin-bottom: 8px;
-        padding: 12px;
+    .pedido-items {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .pedido-item-img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
         border-radius: 4px;
-        background-color: white;
+        margin-right: 10px;
     }
 
-    .pedido-item:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .cantidad-controls {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .cantidad-btn {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        font-weight: bold;
-    }
-
-    .cantidad-value {
-        min-width: 30px;
-        text-align: center;
-        font-weight: bold;
-    }
-
-    .eliminar-btn {
-        color: var(--danger-color);
-        background: none;
-        border: none;
-        font-size: 1.1rem;
-        transition: transform 0.2s;
-        cursor: pointer;
-    }
-
-    .eliminar-btn:hover {
-        transform: scale(1.2);
-    }
-
-    .producto-info {
-        flex-grow: 1;
-    }
-
-    .producto-precio {
-        font-weight: bold;
-        color: var(--dark-color);
-    }
-
-    .producto-subtotal {
-        font-weight: bold;
-        color: var(--success-color);
-    }
-
-    .nota-text {
-        font-size: 0.85rem;
-        color: var(--secondary-color);
-        background-color: #f8f9fa;
-        padding: 4px 8px;
-        border-radius: 4px;
-        margin-top: 4px;
-        cursor: pointer;
-    }
-
-    .nota-text i {
-        margin-right: 4px;
-    }
-
-    /* Animación para cambios en cantidad */
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-
-    .pulse-animation {
-        animation: pulse 0.3s ease;
-    }
-
-    /* Animación para eliminación */
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-
-    .slide-out {
-        animation: slideOut 0.3s ease forwards;
+    /* Animaciones */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 {% endblock %}
-
 {% block content %}
 <div class="container-fluid py-3">
     <div class="row">
@@ -416,79 +336,76 @@
             </div>
         </div>
 
-        <!-- Detalles del Pedido - Versión Mejorada -->
+        <!-- Detalles del Pedido -->
         <div class="col-lg-3 col-md-4">
             <div class="card shadow-sm pedido-container">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h3 class="mb-0">
-                        <i class="fas fa-shopping-cart me-2"></i>Carrito - Mesa {{ mesa.numero }}
+                        <i class="fas fa-receipt me-2"></i>Pedido Actual
                     </h3>
                     <span class="badge bg-light text-dark">{{ pedido_existente.detalles.count|default:0 }} ítems</span>
                 </div>
                 <div class="card-body">
                     {% if pedido_existente %}
-                    <div class="pedido-items mb-3">
+                    <div class="list-group mb-3 pedido-items">
                         {% for detalle in pedido_existente.detalles.all %}
-                        <div class="pedido-item">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div class="producto-info">
-                                    <div class="d-flex align-items-center">
-                                        <h6 class="mb-0 me-2">{{ detalle.producto.nombre }}</h6>
-                                        <span class="producto-precio">${{ detalle.producto.precio|floatformat:0 }}</span>
-                                    </div>
-                                    {% if detalle.notas %}
-                                    <div class="nota-text">
-                                        <i class="fas fa-sticky-note me-1"></i>{{ detalle.notas }}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <button class="eliminar-btn" data-detalle-id="{{ detalle.id }}">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </div>
-                            
+                        <div class="list-group-item d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div class="cantidad-controls">
-                                    <button class="btn btn-sm btn-outline-secondary cantidad-btn decrementar" 
-                                            data-detalle-id="{{ detalle.id }}">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <span class="cantidad-value" data-detalle-id="{{ detalle.id }}">
-                                        {{ detalle.cantidad }}
-                                    </span>
-                                    <button class="btn btn-sm btn-outline-secondary cantidad-btn incrementar" 
-                                            data-detalle-id="{{ detalle.id }}">
-                                        <i class="fas fa-plus"></i>
+                                <div class="d-flex align-items-center">
+                                    <!-- Imagen del producto en el pedido -->
+                                    {% if detalle.producto.imagen %}
+                                        <img src="{{ detalle.producto.imagen.url }}" alt="{{ detalle.producto.nombre }}" class="pedido-item-img">
+                                    {% else %}
+                                        <div class="pedido-item-img d-flex align-items-center justify-content-center bg-light">
+                                            <i class="fas fa-utensils text-muted"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <span class="fw-medium">{{ detalle.producto.nombre }}</span>
+                                        <span class="badge bg-secondary rounded-pill ms-1">{{ detalle.cantidad }}</span>
+                                        <button 
+                                            class="btn btn-sm btn-outline-danger eliminar-producto"
+                                            data-detalle-id="{{ detalle.id }}"
+                                            title="Eliminar"
+                                        >
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">${{ detalle.subtotal|floatformat:0 }}</span>
+                            </div>
+                            <div class="mt-1">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm nota-input" 
+                                        value="{{ detalle.notas }}" placeholder="Agregar nota especial"
+                                        data-detalle-id="{{ detalle.id }}">
+                                    <button class="btn btn-outline-secondary guardar-nota btn-sm" 
+                                        data-detalle-id="{{ detalle.id }}">
+                                        <i class="fas fa-save"></i>
                                     </button>
                                 </div>
-                                <span class="producto-subtotal">
-                                    ${{ detalle.subtotal|floatformat:0 }}
-                                </span>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
-                    
-                    <div class="d-flex justify-content-between mb-3 p-3 bg-light rounded">
+                    <div class="d-flex justify-content-between mb-3 p-2 bg-light rounded">
                         <strong class="fs-5">Total</strong>
-                        <span class="h4 mb-0 text-success">${{ total_pedido|floatformat:0 }}</span>
+                        <span class="h4 mb-0">${{ total_pedido|floatformat:0 }}</span>
                     </div>
-                    
                     <div class="d-grid gap-2">
-                        <a href="{% url 'users:dashboard' %}" class="btn btn-success btn-lg">
+                        <a href="{% url 'users:dashboard' %}" class="btn btn-primary btn-lg">
                             <i class="fas fa-check-circle me-2"></i>Confirmar Pedido
-                        </a>
+                        </a>                        
                     </div>
                     {% else %}
                     <div class="text-center py-5">
                         <i class="fas fa-shopping-cart mb-3" style="font-size: 2rem; color: #ccc;"></i>
-                        <p class="text-muted">El carrito está vacío</p>
-                        <p class="small text-muted">Agrega productos desde el menú</p>
+                        <p class="text-muted">No hay productos en el pedido</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
-        </div>
+        </div>      
     </div>
 </div>
 {% endblock %}
@@ -520,14 +437,15 @@
             document.removeEventListener(event, window.handleUserActivity);
         });
     })();
-
     document.addEventListener('DOMContentLoaded', function() {
+        // Guardar la categoría seleccionada en localStorage
+        const categoriaBtns = document.querySelectorAll('.categoria-btn');
+        const categoriaProductos = document.querySelectorAll('.categoria-productos');
+        const searchInput = document.getElementById('producto-search');
+        const mobileCategoryName = document.getElementById('mobile-category-name');
+        
         // Función para activar una categoría
         function activateCategory(categoriaId) {
-            const categoriaProductos = document.querySelectorAll('.categoria-productos');
-            const categoriaBtns = document.querySelectorAll('.categoria-btn');
-            const mobileCategoryName = document.getElementById('mobile-category-name');
-            
             // Ocultar todos los productos
             categoriaProductos.forEach(el => {
                 el.style.display = 'none';
@@ -569,7 +487,6 @@
         }
         
         // Event listeners para botones de categoría
-        const categoriaBtns = document.querySelectorAll('.categoria-btn');
         categoriaBtns.forEach(btn => {
             btn.addEventListener('click', function() {
                 const categoriaId = this.dataset.categoria;
@@ -636,120 +553,34 @@
         }
         
         // Event listener para la búsqueda
-        const searchInput = document.getElementById('producto-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                searchProducts(this.value);
-            });
-            
-            // Manejar la tecla Escape para limpiar búsqueda
-            searchInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    this.value = '';
-                    searchProducts('');
-                }
-            });
-        }
+        searchInput.addEventListener('input', function() {
+            searchProducts(this.value);
+        });
         
-        // Función para actualizar cantidad
-        function updateCantidad(detalleId, action) {
-            const cantidadElement = document.querySelector(`.cantidad-value[data-detalle-id="${detalleId}"]`);
-            let cantidad = parseInt(cantidadElement.textContent);
-            
-            if (action === 'incrementar') {
-                cantidad += 1;
-            } else if (action === 'decrementar' && cantidad > 1) {
-                cantidad -= 1;
-            } else {
-                return; // No hacer nada si es decrementar y cantidad es 1
+        // Manejar la tecla Escape para limpiar búsqueda
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                this.value = '';
+                searchProducts('');
             }
-            
-            // Guardar categoría activa antes de enviar
-            const categoriaActiva = localStorage.getItem('categoriaActiva') || 
-                                  document.querySelector('.categoria-btn.active')?.dataset.categoria;
-            
-            fetch('', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: `action=update_cantidad&detalle_id=${detalleId}&cantidad=${cantidad}&categoria_activa=${categoriaActiva}`
-            })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                } else if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // Animación de feedback
-                    cantidadElement.textContent = cantidad;
-                    cantidadElement.classList.add('pulse-animation');
-                    setTimeout(() => {
-                        cantidadElement.classList.remove('pulse-animation');
-                    }, 300);
-                    
-                    // Actualizar subtotal si la respuesta lo incluye
-                    if (data.subtotal) {
-                        const subtotalElement = document.querySelector(`.pedido-item [data-detalle-id="${detalleId}"] .producto-subtotal`);
-                        if (subtotalElement) {
-                            subtotalElement.textContent = `$${data.subtotal}`;
-                            subtotalElement.classList.add('pulse-animation');
-                            setTimeout(() => {
-                                subtotalElement.classList.remove('pulse-animation');
-                            }, 300);
-                        }
-                    }
-                    
-                    // Actualizar total si la respuesta lo incluye
-                    if (data.total) {
-                        const totalElement = document.querySelector('.pedido-container .h4.text-success');
-                        if (totalElement) {
-                            totalElement.textContent = `$${data.total}`;
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire('Error', 'Ocurrió un error al actualizar la cantidad', 'error');
-            });
-        }
-        
-        // Event listeners para botones de cantidad
+        });
+    
+        // Mejor manejo para eliminar productos con confirmación mediante SweetAlert
         document.addEventListener('click', function(e) {
-            // Incrementar cantidad
-            if (e.target.closest('.incrementar')) {
-                const detalleId = e.target.closest('.incrementar').dataset.detalleId;
-                updateCantidad(detalleId, 'incrementar');
-            }
-            
-            // Decrementar cantidad
-            if (e.target.closest('.decrementar')) {
-                const detalleId = e.target.closest('.decrementar').dataset.detalleId;
-                updateCantidad(detalleId, 'decrementar');
-            }
-            
-            // Eliminar producto
-            const eliminarBtn = e.target.closest('.eliminar-btn');
+            const eliminarBtn = e.target.closest('.eliminar-producto');
             if (eliminarBtn) {
                 e.preventDefault();
                 const detalleId = eliminarBtn.dataset.detalleId;
                 
                 Swal.fire({
                     title: '¿Eliminar producto?',
-                    text: "¿Estás seguro de que quieres eliminar este producto del carrito?",
-                    icon: 'question',
+                    text: "Esta acción no se puede deshacer",
+                    icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#dc3545',
-                    cancelButtonColor: '#6c757d',
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
                     confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    reverseButtons: true
+                    cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         // Guardar categoría activa antes de enviar
@@ -772,16 +603,6 @@
                             }
                             return response.json();
                         })
-                        .then(data => {
-                            if (data.success) {
-                                // Animación de eliminación
-                                const item = eliminarBtn.closest('.pedido-item');
-                                item.classList.add('slide-out');
-                                setTimeout(() => {
-                                    window.location.reload();
-                                }, 300);
-                            }
-                        })
                         .catch(error => {
                             console.error('Error:', error);
                             Swal.fire('Error', 'Ocurrió un error al eliminar el producto', 'error');
@@ -790,65 +611,48 @@
                 });
             }
         });
-        
-        // Permitir editar notas directamente
-        document.querySelectorAll('.nota-text').forEach(nota => {
-            nota.addEventListener('click', function() {
-                const detalleId = this.closest('.pedido-item').querySelector('.eliminar-btn').dataset.detalleId;
-                const currentNote = this.textContent.trim().replace('', '').trim();
+       
+        // Guardar notas al hacer clic en el botón
+        document.querySelectorAll('.guardar-nota').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const detalleId = this.dataset.detalleId;
+                const nota = document.querySelector(`.nota-input[data-detalle-id="${detalleId}"]`).value;
                 
-                Swal.fire({
-                    title: 'Editar nota',
-                    input: 'text',
-                    inputValue: currentNote,
-                    showCancelButton: true,
-                    confirmButtonText: 'Guardar',
-                    cancelButtonText: 'Cancelar',
-                    inputValidator: (value) => {
-                        if (value.length > 100) {
-                            return 'La nota no puede exceder los 100 caracteres';
-                        }
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const newNote = result.value;
-                        
-                        // Guardar categoría activa antes de enviar
-                        const categoriaActiva = localStorage.getItem('categoriaActiva') || 
-                                              document.querySelector('.categoria-btn.active')?.dataset.categoria;
-                        
-                        fetch('', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                            },
-                            body: `action=update_nota&detalle_id=${detalleId}&nota=${encodeURIComponent(newNote)}&categoria_activa=${categoriaActiva}`
-                        })
-                        .then(response => {
-                            if (response.redirected) {
-                                window.location.href = response.url;
-                            } else if (response.ok) {
-                                this.textContent = newNote ? ` ${newNote}` : '';
-                                Swal.fire({
-                                    position: 'top-end',
-                                    icon: 'success',
-                                    title: 'Nota actualizada',
-                                    showConfirmButton: false,
-                                    timer: 1500
-                                });
-                            } else {
-                                throw new Error('Error en la respuesta del servidor');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            Swal.fire('Error', 'Ocurrió un error al guardar la nota', 'error');
+                // Guardar categoría activa antes de enviar
+                const categoriaActiva = localStorage.getItem('categoriaActiva') || 
+                                      document.querySelector('.categoria-btn.active')?.dataset.categoria;
+                
+                fetch('', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: `action=update_nota&detalle_id=${detalleId}&nota=${encodeURIComponent(nota)}&categoria_activa=${categoriaActiva}`
+                })
+                .then(response => {
+                    if (response.ok) {
+                        Swal.fire({
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Nota guardada',
+                            showConfirmButton: false,
+                            timer: 1500
                         });
+                    } else if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        throw new Error('Error en la respuesta del servidor');
                     }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error', 'Ocurrió un error al guardar la nota', 'error');
                 });
             });
         });
+        
+ 
         
         // Feedback al agregar productos
         document.querySelectorAll('.btn-agregar').forEach(btn => {
@@ -896,6 +700,16 @@
                 }, 300);
             }
         }
+        
+        // Permitir guardar notas con Enter
+        document.querySelectorAll('.nota-input').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const detalleId = this.dataset.detalleId;
+                    document.querySelector(`.guardar-nota[data-detalle-id="${detalleId}"]`).click();
+                }
+            });
+        });
     });
 </script>
 {% endblock %}
