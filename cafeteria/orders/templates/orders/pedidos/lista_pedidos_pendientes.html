@@ -50,6 +50,11 @@
                                 <i class="fas fa-sync"></i> Actualizar Estado
                             </a>
                             <!-- Código modificado para los botones de acción -->
+                             <a href="{% url 'orders:imprimir_recibo_cocina' pedido.id %}" 
+                                target="_blank" 
+                                class="btn btn-sm btn-outline-primary">
+                                    🖨️ Cocina
+                            </a>
                             <div class="d-flex justify-content-end">
                                 {% if pedido.puede_cerrarse %}
                                 <a href="{% url 'orders:procesar_pago' pedido.id %}" class="btn btn-success">

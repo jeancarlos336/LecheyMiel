@@ -18,35 +18,7 @@
 {% block content %}
 <!-- Añade esto al inicio del contenido -->
 <div id="csrf-token" style="display:none;">{% csrf_token %}</div>
-<div class="container">
-    <div class="row mb-4">
-        <div class="col-12">          
-            <div class="d-flex justify-content-center gap-4">
-                <button class="btn btn-sm btn-outline-primary btn-cambiar-estado" 
-                    data-item-id="{{ detalle.id }}" 
-                    data-estado="en_preparacion"
-                    {% if detalle.estado != 'pendiente' %}disabled{% endif %}
-                    title="Comenzar preparación">
-                    <i class="fas fa-play"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-success btn-cambiar-estado" 
-                    data-item-id="{{ detalle.id }}" 
-                    data-estado="listo"
-                    {% if detalle.estado != 'en_preparacion' %}disabled{% endif %}
-                    title="Marcar como listo">
-                    <i class="fas fa-check"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger btn-cambiar-estado" 
-                    data-item-id="{{ detalle.id }}" 
-                    data-estado="cancelado"  
-                    {% if detalle.estado|in_list:"cancelado,entregado" %}disabled{% endif %}
-                    title="Cancelar ítem">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
+<div class="container">  
     <div class="row">
         <div class="col-12">
             {% for pedido_data in pedidos %}

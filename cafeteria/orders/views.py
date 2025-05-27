@@ -22,7 +22,7 @@ from decimal import Decimal
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-
+from django.http import HttpResponse
 
 #trabajo con las mesas
 @login_required
@@ -1464,3 +1464,62 @@ class GetTodasCategoriasView(LoginRequiredMixin, View):
         return JsonResponse({
             'categorias': list(categorias_data)
         })
+
+
+
+######################################################
+#Recivo cocina
+@login_required
+def recibo_cocina(request, pedido_id):
+    """
+    Vista para mostrar el recibo de cocina de un pedido específico
+    """
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Items de cocina (prioritarios) - solo los que no están entregados
+    items_cocina = pedido.items_activos.filter(
+        producto__categoria__area_preparacion__nombre='cocina'
+    ).exclude(estado='entregado')
+    
+    # Items de otras áreas (bar, barra, etc.) - solo los que no están entregados
+    items_otras_areas = pedido.items_activos.exclude(
+        producto__categoria__area_preparacion__nombre='cocina'
+    ).exclude(estado='entregado')
+    
+    context = {
+        'pedido': pedido,
+        'items_cocina': items_cocina,
+        'items_otras_areas': items_otras_areas,
+        'fecha_impresion': timezone.now(),
+    }
+    
+    return render(request, 'orders/pedidos/recibo_cocina.html', context)
+
+@login_required
+def imprimir_recibo_cocina(request, pedido_id):
+    """
+    Vista para imprimir directamente el recibo (abre en nueva ventana)
+    """
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Items de cocina (prioritarios) - solo los que no están entregados
+    items_cocina = pedido.items_activos.filter(
+        producto__categoria__area_preparacion__nombre='cocina'
+    ).exclude(estado='entregado')
+    
+    # Items de otras áreas (bar, barra, etc.) - solo los que no están entregados
+    items_otras_areas = pedido.items_activos.exclude(
+        producto__categoria__area_preparacion__nombre='cocina'
+    ).exclude(estado='entregado')
+    
+    context = {
+        'pedido': pedido,
+        'items_cocina': items_cocina,
+        'items_otras_areas': items_otras_areas,
+        'fecha_impresion': timezone.now(),
+        'para_impresion': True,  # Flag para saber que es para impresión
+    }
+    
+    response = render(request, 'orders/pedidos/recibo_cocina.html', context)
+    response['Content-Type'] = 'text/html; charset=utf-8'
+    return response

@@ -59,5 +59,8 @@ urlpatterns = [
     path('venta-express/recibo/<int:pedido_id>/', ReciboVentaExpressView.as_view(), name='recibo_venta_express'),
     path('buscar-producto-express/', BuscarProductoExpressView.as_view(), name='buscar_producto_express'),
     path('get-todas-categorias/', GetTodasCategoriasView.as_view(), name='get_todas_categorias'),
+    
+    path('pedido/<int:pedido_id>/recibo-cocina/', views.recibo_cocina,name='recibo_cocina'),   
+    path('pedido/<int:pedido_id>/imprimir-cocina/', views.imprimir_recibo_cocina,name='imprimir_recibo_cocina'),
 
 ]
