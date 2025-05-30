@@ -2,53 +2,28 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recibo Cocina - Pedido #{{ pedido.id }}</title>
     <style>
-        * {
+        @page {
+            size: 80mm 297mm;
             margin: 0;
-            padding: 0;
-            box-sizing: border-box;
         }
-        
         body {
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            line-height: 1.2;
-            color: #000;
-            background: #fff;
-            width: 72mm; /* Área imprimible real en 80mm */
-            max-width: 72mm;
-            margin: 0 auto;
-            padding: 4mm 2mm 2mm 4mm; /*margenes arriba, abajo, derecha, izquierda */
-        }
-        
-        .recibo-header {
+            font-family: Arial, sans-serif;
+            margin: 2mm;
             text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            font-size: 11pt;
+            width: 76mm;
         }
-        
         .titulo {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
-        
-        .info-pedido {
-            margin-bottom: 10px;
+        h1, h2, h3, p {
+            font-size: 12pt;
         }
-        
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 3px;
-            font-weight: bold;
-            font-size: 10px;
+        .numero {
+            font-family: 'Courier New', monospace;
         }
-        
         .numero-pedido {
             font-size: 18px;
             font-weight: bold;
@@ -56,66 +31,62 @@
             background: #000;
             color: #fff;
             padding: 4px;
-            margin: 5px 0;
+            margin: 3mm 0;
             border-radius: 2px;
         }
-        
         .mesa-info {
             font-size: 16px;
             font-weight: bold;
             text-align: center;
             background: #f0f0f0;
             padding: 4px;
-            margin: 5px 0;
+            margin: 3mm 0;
             border: 1px solid #000;
         }
-        
         .cliente-info {
             font-size: 12px;
             font-weight: bold;
             text-align: center;
             background: #e8e8e8;
             padding: 4px;
-            margin: 5px 0;
+            margin: 3mm 0;
             border: 1px solid #666;
         }
-        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2mm;
+            font-weight: bold;
+            font-size: 11pt;
+        }
         .items-header {
             border-top: 1px solid #000;
             border-bottom: 1px solid #000;
             padding: 4px 0;
-            margin-bottom: 6px;
+            margin-bottom: 3mm;
             font-weight: bold;
             text-transform: uppercase;
-            font-size: 10px;
+            font-size: 11pt;
             text-align: center;
         }
-        
         .items-header.cocina {
             background: #000;
             color: #fff;
         }
-        
         .items-header.otras-areas {
             background: #f0f0f0;
             color: #000;
-            margin-top: 10px;
+            margin-top: 3mm;
         }
-        
-        .seccion-items {
-            margin-bottom: 15px;
-        }
-        
         .item {
-            margin-bottom: 8px;
-            padding-bottom: 4px;
+            margin-bottom: 4mm;
+            padding-bottom: 2mm;
             border-bottom: 1px dashed #ccc;
+            text-align: left;
         }
-        
         .item:last-child {
             border-bottom: none;
         }
-        
         .item-cantidad {
             font-size: 14px;
             font-weight: bold;
@@ -128,140 +99,57 @@
             min-width: 24px;
             text-align: center;
         }
-        
         .item-nombre {
-            font-size: 11px;
+            font-size: 12pt;
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 2px;
+            margin-bottom: 1mm;
             line-height: 1.1;
         }
-        
         .item-notas {
-            font-size: 9px;
+            font-size: 10pt;
             color: #666;
             font-style: italic;
-            margin-top: 2px;
+            margin-top: 1mm;
             padding-left: 30px;
             line-height: 1.1;
         }
-        
         .area-preparacion {
-            font-size: 8px;
+            font-size: 9pt;
             background: #f5f5f5;
             padding: 1px 4px;
             border-radius: 2px;
             display: inline-block;
-            margin-top: 2px;
+            margin-top: 1mm;
         }
-        
         .area-preparacion.cocina {
             background: #ffebcd;
             color: #8b4513;
             font-weight: bold;
         }
-        
         .area-preparacion.bar {
             background: #e6f3ff;
             color: #0066cc;
         }
-        
         .area-preparacion.barra {
             background: #f0f8e6;
             color: #4d7c0f;
         }
-        
         .footer-info {
             border-top: 2px solid #000;
-            padding-top: 10px;
-            margin-top: 15px;
+            padding-top: 3mm;
+            margin-top: 5mm;
             text-align: center;
-            font-size: 10px;
+            font-size: 10pt;
         }
-        
         .timestamp {
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 2mm;
         }
-        
         .mesero-info {
-            font-size: 11px;
+            font-size: 11pt;
             color: #666;
         }
-        
-        /* Estilos para impresión térmica 80mm */
-        @media print {
-            body {
-                margin: 0 !important;
-                padding: 3mm 1mm 1mm 3mm !important; 
-                width: 72mm !important; /* Área imprimible real */
-                max-width: 72mm !important;
-                font-size: 10px !important;
-            }
-            
-            .numero-pedido {
-                font-size: 16px !important;
-                padding: 3px !important;
-                margin: 3mm 0 !important;
-            }
-            
-            .mesa-info {
-                font-size: 14px !important;
-                padding: 3px !important;
-                margin: 2mm 0 !important;
-            }
-            
-            .cliente-info {
-                font-size: 11px !important;
-                padding: 3px !important;
-                margin: 2mm 0 !important;
-            }
-            
-            .item-cantidad {
-                font-size: 12px !important;
-                padding: 1px 4px !important;
-                min-width: 20px !important;
-                margin-right: 4px !important;
-            }
-            
-            .item-nombre {
-                font-size: 10px !important;
-            }
-            
-            .item-notas {
-                font-size: 8px !important;
-                padding-left: 24px !important;
-            }
-            
-            .area-preparacion {
-                font-size: 7px !important;
-                padding: 0px 2px !important;
-            }
-            
-            .info-row {
-                font-size: 9px !important;
-                margin-bottom: 2px !important;
-            }
-            
-            .footer-info {
-                font-size: 8px !important;
-                margin-top: 3mm !important;
-                padding-top: 2mm !important;
-            }
-            
-            @page {
-                margin: 0;
-                size: 80mm auto; /* Papel térmico estándar */
-            }
-            
-            /* Evitar saltos de página dentro de items */
-            .item {
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-        }
-        
-        /* Botón de impresión (oculto en impresión) */
         .btn-imprimir {
             background: #007bff;
             color: white;
@@ -273,11 +161,9 @@
             margin: 20px auto;
             display: block;
         }
-        
         .btn-imprimir:hover {
             background: #0056b3;
         }
-        
         @media print {
             .btn-imprimir {
                 display: none;
@@ -286,111 +172,103 @@
     </style>
 </head>
 <body>
-    <div class="recibo-header">
-        <div class="titulo">ORDEN DE COCINA</div>
-    </div>
+    <h1 class="titulo">ORDEN DE COCINA</h1>
     
     <div class="numero-pedido">
         PEDIDO #{{ pedido.id }}
     </div>
     
-    <div class="info-pedido">
-        {% if pedido.mesa %}
-            <div class="mesa-info">
-                MESA {{ pedido.mesa.numero }}
-            </div>
-        {% else %}
-            <div class="cliente-info">
-                {{ pedido.tipo_orden.nombre|upper }}
-                {% if pedido.nombre_cliente %}
-                    <br>{{ pedido.nombre_cliente|upper }}
-                {% endif %}
-                {% if pedido.numero_orden %}
-                    <br>{{ pedido.numero_orden }}
-                {% endif %}
-            </div>
-        {% endif %}       
-        
-        <div class="info-row">
-            <span>Fecha:</span>
-            <span>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</span>
+    {% if pedido.mesa %}
+        <div class="mesa-info">
+            MESA {{ pedido.mesa.numero }}
         </div>
+    {% else %}
+        <div class="cliente-info">
+            {{ pedido.tipo_orden.nombre|upper }}
+            {% if pedido.nombre_cliente %}
+                <br>{{ pedido.nombre_cliente|upper }}
+            {% endif %}
+            {% if pedido.numero_orden %}
+                <br>{{ pedido.numero_orden }}
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="info-row">
+        <span>Fecha:</span>
+        <span>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</span>
     </div>
-    
+
     <!-- SECCIÓN COCINA (PRIORITARIA) -->
     {% if items_cocina %}
-        <div class="seccion-items">
-            <div class="items-header cocina">
-                🔥 COCINA - PRIORITARIO 🔥
-            </div>
-            
-            {% for item in items_cocina %}
-                <div class="item">
-                    <div class="item-cantidad">{{ item.cantidad }}</div>
-                    <div class="item-nombre">{{ item.producto.nombre }}</div>
-                    
-                    {% if item.producto.categoria.area_preparacion %}
-                        <div class="area-preparacion cocina">
-                            {{ item.producto.categoria.area_preparacion.nombre|upper }}
-                        </div>
-                    {% endif %}
-                    
-                    {% if item.notas %}
-                        <div class="item-notas">
-                            <strong>NOTAS:</strong> {{ item.notas }}
-                        </div>
-                    {% endif %}
-                </div>
-            {% endfor %}
+        <div class="items-header cocina">
+            🔥 COCINA - PRIORITARIO 🔥
         </div>
+        
+        {% for item in items_cocina %}
+            <div class="item">
+                <div class="item-cantidad">{{ item.cantidad }}</div>
+                <div class="item-nombre">{{ item.producto.nombre }}</div>
+                
+                {% if item.producto.categoria.area_preparacion %}
+                    <div class="area-preparacion cocina">
+                        {{ item.producto.categoria.area_preparacion.nombre|upper }}
+                    </div>
+                {% endif %}
+                
+                {% if item.notas %}
+                    <div class="item-notas">
+                        <strong>NOTAS:</strong> {{ item.notas }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
     {% endif %}
-    
+
     <!-- SECCIÓN OTRAS ÁREAS -->
     {% if items_otras_areas %}
-        <div class="seccion-items">
-            <div class="items-header otras-areas">
-                🍹 OTRAS ÁREAS 🍹
-            </div>
-            
-            {% for item in items_otras_areas %}
-                <div class="item">
-                    <div class="item-cantidad">{{ item.cantidad }}</div>
-                    <div class="item-nombre">{{ item.producto.nombre }}</div>
-                    
-                    {% if item.producto.categoria.area_preparacion %}
-                        <div class="area-preparacion {{ item.producto.categoria.area_preparacion.nombre|lower }}">
-                            {{ item.producto.categoria.area_preparacion.nombre|upper }}
-                        </div>
-                    {% else %}
-                        <div class="area-preparacion">
-                            SIN ÁREA
-                        </div>
-                    {% endif %}
-                    
-                    {% if item.notas %}
-                        <div class="item-notas">
-                            <strong>NOTAS:</strong> {{ item.notas }}
-                        </div>
-                    {% endif %}
-                </div>
-            {% endfor %}
+        <div class="items-header otras-areas">
+            🍹 OTRAS ÁREAS 🍹
         </div>
+        
+        {% for item in items_otras_areas %}
+            <div class="item">
+                <div class="item-cantidad">{{ item.cantidad }}</div>
+                <div class="item-nombre">{{ item.producto.nombre }}</div>
+                
+                {% if item.producto.categoria.area_preparacion %}
+                    <div class="area-preparacion {{ item.producto.categoria.area_preparacion.nombre|lower }}">
+                        {{ item.producto.categoria.area_preparacion.nombre|upper }}
+                    </div>
+                {% else %}
+                    <div class="area-preparacion">
+                        SIN ÁREA
+                    </div>
+                {% endif %}
+                
+                {% if item.notas %}
+                    <div class="item-notas">
+                        <strong>NOTAS:</strong> {{ item.notas }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
     {% endif %}
-    
+
     <!-- MENSAJE SI NO HAY ITEMS -->
     {% if not items_cocina and not items_otras_areas %}
         <div style="text-align: center; padding: 20px; color: #666;">
             No hay items pendientes para preparar
         </div>
     {% endif %}
-    
+
     {% if pedido.notas %}
         <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 15px;">
             <strong>NOTAS DEL PEDIDO:</strong><br>
             {{ pedido.notas }}
         </div>
     {% endif %}
-    
+
     <div class="footer-info">
         <div class="timestamp">
             Impreso: {{ fecha_impresion|date:"d/m/Y H:i:s" }}
@@ -399,34 +277,29 @@
             Mesero: {{ pedido.mesero.get_full_name|default:pedido.mesero.username }}
         </div>
     </div>
-    
+
     {% if not para_impresion %}
         <button class="btn-imprimir" onclick="window.print()">
             🖨️ IMPRIMIR
         </button>
     {% endif %}
-    
+
     <script>
-        // Auto-imprimir si viene con parámetro de impresión
         {% if para_impresion %}
             window.onload = function() {
                 window.print();
             }
         {% endif %}
         
-        // Función para imprimir
         function imprimirRecibo() {
             window.print();
         }
         
-        // Atajos de teclado
         document.addEventListener('keydown', function(e) {
-            // Ctrl + P para imprimir
             if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
                 window.print();
             }
-            // Escape para cerrar ventana
             if (e.key === 'Escape') {
                 window.close();
             }

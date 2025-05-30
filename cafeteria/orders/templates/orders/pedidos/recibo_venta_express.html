@@ -2,54 +2,80 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recibo - {{ pedido.numero_orden }}</title>
     <style>
-        @media print {
-            .no-print {
-                display: none;
-            }
-            body {
-                font-size: 12pt;
-                margin: 0;
-                padding: 0;
-            }
+        @page {
+            size: 80mm 297mm;
+            margin: 0;
         }
         body {
-            font-family: 'Courier New', monospace;
-            margin: 0;
-            padding: 0;
-            background-color: #f8f9fa;
-        }
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .receipt {
-            max-width: 80mm;
-            margin: 0 auto;
-            padding: 10px;
-            background-color: white;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-        }
-        .receipt-header, .receipt-footer {
+            font-family: Arial, sans-serif;
+            margin: 2mm;
             text-align: center;
-            margin-bottom: 10px;
+            font-size: 11pt;
+            width: 76mm;
+        }
+        .total {
+            text-align: right;
+            margin-right: 2mm;
+        }
+        .producto {
+            text-align: left;
+            width: 40%;
+        }
+        .cantidad, .precio, .subtotal {
+            text-align: right;
+            width: 20%;
+        }
+        .titulo {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .fecha {
+            text-align: center;
+        }
+        h1, h2, h3, h4, h5, p {
+            font-size: 12pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 2mm;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .numero {
+            font-family: 'Courier New', monospace;
         }
         .receipt-divider {
             border-top: 1px dashed #000;
-            margin: 10px 0;
+            margin: 3mm 0;
         }
         .receipt-item {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
+            margin-bottom: 1mm;
+            font-size: 11pt;
+            line-height: 1.3;
+        }
+        .receipt-item span:first-child {
+            flex: 1;
+            padding-right: 2mm;
+        }
+        .receipt-item span:last-child {
+            white-space: nowrap;
+            font-weight: bold;
         }
         .receipt-total {
             font-weight: bold;
-            text-align: right;
-            margin-top: 10px;
+            margin-top: 3mm;
+        }
+        .receipt-footer {
+            text-align: center;
+            margin-top: 3mm;
+            font-size: 10pt;
         }
         .payment-status {
             font-weight: bold;
@@ -83,91 +109,98 @@
         .mt-4 {
             margin-top: 1.5rem;
         }
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="receipt">
-            <div class="receipt-header">
-                <h3>Cafeteria Leche y Miel</h3>
-                <p>{{ empresa.direccion|default:"Colin s/n" }}</p>
-                <p>RECIBO DE VENTA EXPRESS</p>
-                <p>Fecha: {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
-            </div>
-           
-            <div class="receipt-divider"></div>
-           
-            <div>
-                <p>Pedido #: {{ pedido.numero_orden }}</p>           
-                <h5>{{ pedido.tipo_orden.nombre }}
-                    {% if pedido.nombre_cliente %} - Cliente: {{ pedido.nombre_cliente }}{% endif %}
-                </h5>
-               
-                <div class="receipt-divider"></div>
-               
-                {% for detalle in detalles %}
-                    <div class="receipt-item">
-                        <span>{{ detalle.cantidad }}x {{ detalle.producto.nombre }}</span>
-                        <span>${{ detalle.subtotal|floatformat:0 }}</span>
-                    </div>
-                {% endfor %}
-               
-                <div class="receipt-divider"></div>
-               
-                <div class="receipt-total">               
-                    <div class="receipt-item">
-                        <span>TOTAL:</span>
-                        <span>${{ pedido.monto_total|floatformat:0 }}</span>
-                    </div>    
-                    
-                    <!-- Mostrar siempre el estado de pago explícitamente -->
-                    <div class="receipt-item payment-status">
-                        <span>ESTADO:</span>
-                        <span>{{ pedido.get_estado_pago_display|upper }}</span>
-                    </div>
-                   
-                    {% if pedido.estado_pago == 'pagado' and pagos %}
-                        {% with pago=pagos.0 %}
-                            <div class="receipt-item">
-                                <span>MÉTODO:</span>
-                                <span>{{ pago.get_metodo_display }}</span>
-                            </div>
-                            {% if pago.metodo == 'efectivo' and pago.monto_recibido %}
-                            <div class="receipt-item">
-                                <span>EFECTIVO:</span>
-                                <span>${{ pago.monto_recibido|floatformat:0 }}</span>
-                            </div>
-                            <div class="receipt-item">
-                                <span>CAMBIO:</span>
-                                <span>${{ pago.cambio|floatformat:0 }}</span>
-                            </div>
-                            {% endif %}
-                        {% endwith %}
-                    {% endif %}
-                </div>
-               
-                <div class="receipt-divider"></div>
-               
-                <div class="receipt-footer">
-                    <p>Atendido por: {{ pedido.mesero.get_full_name }}</p>
-                    {% if pedido.cajero %}
-                    <p>Cobrado por: {{ pedido.cajero.get_full_name }}</p>
-                    {% endif %}
-                    <p>¡Gracias por su preferencia!</p>
-                    <p>Lo esperamos pronto</p>
-                    <p>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
-                </div>
-            </div>
+    <h1 class="titulo">Cafeteria Leche y Miel</h1>
+    <p>{{ empresa.direccion|default:"Colin s/n" }}</p>
+    <p><strong>RECIBO DE VENTA EXPRESS</strong></p>
+    <p class="fecha">Fecha: {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+
+    <div class="receipt-divider"></div>
+
+    <p><strong>Pedido #: {{ pedido.numero_orden }}</strong></p>
+    <h4>{{ pedido.tipo_orden.nombre }}
+        {% if pedido.nombre_cliente %} - Cliente: {{ pedido.nombre_cliente }}{% endif %}
+    </h4>
+
+    <div class="receipt-divider"></div>
+
+    <table width="100%" style="margin-top: 2mm;">
+        <thead>
+            <tr>
+                <th class="producto">Producto</th>
+                <th class="cantidad">Cant.</th>
+                <th class="subtotal">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detalle in detalles %}
+            <tr>
+                <td class="producto">{{ detalle.producto.nombre|truncatechars:25 }}</td>
+                <td class="cantidad">{{ detalle.cantidad }}</td>
+                <td class="subtotal">$ {{ detalle.subtotal|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-total">
+        <div class="receipt-item">
+            <span><strong>TOTAL:</strong></span>
+            <span><strong>$ {{ pedido.monto_total|floatformat:0 }}</strong></span>
         </div>
-       
-        <div class="text-center mt-4 no-print">
-            <button onclick="window.print()" class="btn btn-primary">Imprimir recibo</button>
-            <a href="{% url 'orders:venta_express' %}" class="btn btn-secondary">Volver a ventas</a>
+        
+        <div class="receipt-item payment-status">
+            <span><strong>ESTADO:</strong></span>
+            <span><strong>{{ pedido.get_estado_pago_display|upper }}</strong></span>
         </div>
+
+        {% if pedido.estado_pago == 'pagado' and pagos %}
+            {% with pago=pagos.0 %}
+                <div class="receipt-item">
+                    <span>MÉTODO:</span>
+                    <span>{{ pago.get_metodo_display }}</span>
+                </div>
+                {% if pago.metodo == 'efectivo' and pago.monto_recibido %}
+                <div class="receipt-item">
+                    <span>EFECTIVO:</span>
+                    <span>$ {{ pago.monto_recibido|floatformat:0 }}</span>
+                </div>
+                <div class="receipt-item">
+                    <span>CAMBIO:</span>
+                    <span>$ {{ pago.cambio|floatformat:0 }}</span>
+                </div>
+                {% endif %}
+            {% endwith %}
+        {% endif %}
     </div>
-    
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-footer">
+        <p>Atendido por: {{ pedido.mesero.get_full_name }}</p>
+        {% if pedido.cajero %}
+        <p>Cobrado por: {{ pedido.cajero.get_full_name }}</p>
+        {% endif %}
+        <p><strong>¡Gracias por su preferencia!</strong></p>
+        <p>Lo esperamos pronto</p>
+        <p>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+    </div>
+
+    <div class="text-center mt-4 no-print">
+        <button onclick="window.print()" class="btn btn-primary">Imprimir recibo</button>
+        <a href="{% url 'orders:venta_express' %}" class="btn btn-secondary">Volver a ventas</a>
+    </div>
+
     <script>
-        // Imprimir automáticamente al cargar la página
         window.onload = function() {
             setTimeout(function() {
                 window.print();
