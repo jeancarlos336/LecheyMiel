@@ -169,6 +169,8 @@ def tomar_pedido(request, mesa_id):
 
             action = request.POST.get('action')
             
+            # Agregar esta parte al final de tu acción 'add_producto' en tomar_pedido:
+
             if action == 'add_producto':
                 # Procesar detalle del pedido
                 producto_id = request.POST.get('producto_id')
@@ -188,9 +190,10 @@ def tomar_pedido(request, mesa_id):
                     # Si ya existe, actualizar la cantidad
                     detalle_existente.cantidad += cantidad
                     detalle_existente.save()
+                    nuevo_detalle = detalle_existente
                 else:
                     # Si no existe, crear nuevo detalle
-                    DetallePedido.objects.create(
+                    nuevo_detalle = DetallePedido.objects.create(
                         pedido=pedido_existente,
                         producto=producto,
                         cantidad=cantidad,
@@ -199,16 +202,29 @@ def tomar_pedido(request, mesa_id):
                         estado='pendiente'
                     )
 
+                # NUEVA LÓGICA: Si el producto NO es de cocina, marcarlo automáticamente como entregado
+                if producto.categoria.area_preparacion.nombre != AreaPreparacion.COCINA:
+                    nuevo_detalle.estado = 'entregado'
+                    nuevo_detalle.hora_listo = timezone.now()
+                    nuevo_detalle.hora_entrega = timezone.now()
+                    nuevo_detalle.save()
+
                 pedido_existente.calcular_total()
+                
+                mensaje_estado = ""
+                if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
+                    mensaje_estado = "agregado al pedido (requiere preparación en cocina)"
+                else:
+                    mensaje_estado = "agregado y marcado como entregado automáticamente"
                 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
                         'success': True,
-                        'message': f'Producto {producto.nombre} agregado al pedido.'
+                        'message': f'Producto {producto.nombre} {mensaje_estado}.',
+                        'es_cocina': producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA
                     })
-                messages.success(request, f'Producto {producto.nombre} agregado al pedido.')
-                return redirect('orders:tomar_pedido', mesa_id=mesa.id)
-                
+                messages.success(request, f'Producto {producto.nombre} {mensaje_estado}.')
+                return redirect('orders:tomar_pedido', mesa_id=mesa.id)                
             elif action == 'remove_producto':
                 detalle_id = request.POST.get('detalle_id')
                 try:
@@ -236,15 +252,21 @@ def tomar_pedido(request, mesa_id):
                 
                 return redirect('orders:tomar_pedido', mesa_id=mesa.id)
             
-            elif action == 'update_nota':
+            elif 'action' in request.POST and request.POST['action'] == 'actualizar_cliente':
+                if pedido_existente:
+                    pedido_existente.nombre_cliente = request.POST.get('nombre_cliente', '')
+                    pedido_existente.save()
+                    return HttpResponse(status=200)
+            
+            elif action == 'update_note':  # Cambiar de 'update_nota' a 'update_note'
                 detalle_id = request.POST.get('detalle_id')
-                nota = request.POST.get('nota', '')
+                notas = request.POST.get('notas', '')  # Cambiar 'nota' por 'notas'
                 try:
                     detalle = DetallePedido.objects.get(
                         id=detalle_id,
                         pedido=pedido_existente
                     )
-                    detalle.notas = nota
+                    detalle.notas = notas
                     detalle.save()
                     
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -550,7 +572,7 @@ def pedidos_preparacion(request):
             template = 'orders/pedidos/pedidos_barra.html'
         elif user.rol.nombre == Rol.ADMINISTRADOR:
             # Para administrador, podemos mostrar todas las áreas o elegir una por defecto
-            area_nombre = request.GET.get('area', AreaPreparacion.COCINA)  # Parámetro opcional para cambiar de área
+            area_nombre = request.GET.get('area', AreaPreparacion.COCINA)
             
             # Validar que el área solicitada sea válida
             if area_nombre not in [AreaPreparacion.COCINA, AreaPreparacion.BAR, AreaPreparacion.BARRA]:
@@ -568,10 +590,19 @@ def pedidos_preparacion(request):
             messages.error(request, "No tienes autorización para acceder a esta sección.")
             return redirect('dashboard')
         
-        # Obtener pedidos con items pendientes para esta área
+        # LÓGICA DIFERENTE según el área
+        if area_nombre == AreaPreparacion.COCINA:
+            # COCINA: Mostrar solo productos pendientes y en preparación (flujo normal)
+            estados_a_mostrar = ['pendiente', 'en_preparacion']
+        else:
+            # BAR Y BARRA: Mostrar solo productos pendientes y en preparación 
+            # (los productos se entregan automáticamente, pero pueden verse mientras se preparan)
+            estados_a_mostrar = ['pendiente', 'en_preparacion']
+        
+        # Obtener pedidos con items en los estados correspondientes para esta área
         pedidos = Pedido.objects.filter(
             Q(detalles__producto__categoria__area_preparacion__nombre=area_nombre) &
-            Q(detalles__estado__in=['pendiente', 'en_preparacion'])
+            Q(detalles__estado__in=estados_a_mostrar)
         ).distinct().order_by('fecha_creacion')
         
         # Organizar los detalles por pedido y área
@@ -579,7 +610,7 @@ def pedidos_preparacion(request):
         for pedido in pedidos:
             detalles = pedido.detalles.filter(
                 producto__categoria__area_preparacion__nombre=area_nombre,
-                estado__in=['pendiente', 'en_preparacion', 'listo']
+                estado__in=estados_a_mostrar
             ).order_by('estado', 'hora_solicitud')
             
             if detalles.exists():
@@ -590,7 +621,8 @@ def pedidos_preparacion(request):
         
         context = {
             'pedidos': pedidos_con_detalles,
-            'area': AreaPreparacion.objects.get(nombre=area_nombre)
+            'area': AreaPreparacion.objects.get(nombre=area_nombre),
+            'es_cocina': area_nombre == AreaPreparacion.COCINA
         }
         
         # Si es administrador, agregar opciones para cambiar de área
@@ -626,19 +658,64 @@ def actualizar_estado_item(request):
         user = request.user
         area_item = item.producto.categoria.area_preparacion
         
+        # SOLO permitir que cada área modifique sus propios productos
         if (user.rol.nombre == Rol.COCINA and area_item.nombre != AreaPreparacion.COCINA) or \
            (user.rol.nombre == Rol.BAR and area_item.nombre != AreaPreparacion.BAR) or \
            (user.rol.nombre == Rol.BARRA and area_item.nombre != AreaPreparacion.BARRA):
             return JsonResponse({'error': 'No tienes permiso para modificar este ítem'}, status=403)
         
-        # Actualizar estado
-        item.estado = nuevo_estado
-        item.preparado_por = user
+        # LÓGICA PRINCIPAL: Solo cocina requiere validación manual
+        if area_item.nombre == AreaPreparacion.COCINA:
+            # COCINA: Proceso manual completo
+            item.estado = nuevo_estado
+            item.preparado_por = user
+            
+            # Actualizar timestamps según el estado
+            if nuevo_estado == 'en_preparacion':
+                item.hora_preparacion = timezone.now()
+            elif nuevo_estado == 'listo':
+                item.hora_listo = timezone.now()
+            elif nuevo_estado == 'entregado':
+                item.hora_entrega = timezone.now()
+                
+        else:
+            # BAR Y BARRA: Solo pueden cambiar a "en_preparacion", luego se entrega automáticamente
+            if nuevo_estado == 'en_preparacion':
+                item.estado = 'en_preparacion'
+                item.hora_preparacion = timezone.now()
+                item.preparado_por = user
+            elif nuevo_estado == 'listo':
+                # Cuando marcan como listo, automáticamente se marca como entregado
+                item.estado = 'entregado'
+                item.hora_listo = timezone.now()
+                item.hora_entrega = timezone.now()
+                item.preparado_por = user
+            elif nuevo_estado == 'cancelado':
+                item.estado = 'cancelado'
+                item.preparado_por = user
+            else:
+                # No permitir otros estados para bar/barra
+                return JsonResponse({'error': 'Estado no válido para esta área'}, status=400)
+        
         item.save()
+        
+        # Verificar si todo el pedido está listo/entregado para actualizar estado del pedido
+        pedido = item.pedido
+        todos_listos_o_entregados = all(
+            detalle.estado in ['listo', 'entregado', 'cancelado'] 
+            for detalle in pedido.detalles.all()
+        )
+        
+        if todos_listos_o_entregados and pedido.estado != 'listo':
+            pedido.estado = 'listo'
+            pedido.save()
         
         return JsonResponse({
             'success': True,
-            'nuevo_estado': item.get_estado_display()
+            'nuevo_estado': item.get_estado_display(),
+            'estado_real': item.estado,
+            'area': area_item.nombre,
+            'es_automatico': area_item.nombre != AreaPreparacion.COCINA
         })
         
     except DetallePedido.DoesNotExist:
@@ -646,9 +723,24 @@ def actualizar_estado_item(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
+def auto_entregar_productos_no_cocina(pedido):
+    """
+    Marca automáticamente como entregados los productos que no son de cocina
+    """
+    detalles_no_cocina = pedido.detalles.filter(
+        ~Q(producto__categoria__area_preparacion__nombre=AreaPreparacion.COCINA),
+        estado='pendiente'
+    )
     
-    #informes
-
+    for detalle in detalles_no_cocina:
+        detalle.estado = 'entregado'
+        detalle.hora_listo = timezone.now()
+        detalle.hora_entrega = timezone.now()
+        # No asignar preparado_por ya que es automático
+        detalle.save()
+        
+        
+#informes
 def informe_ventas(request):
     # Valores predeterminados
     fecha_inicio = request.GET.get('fecha_inicio', '')
@@ -707,7 +799,7 @@ def completar_pago(request, pedido_id):
     """
     Procesa el pago y actualiza el estado del pedido
     """
-    pedido = get_object_or_404(Pedido, id=pedido_id)
+    pedido = get_object_or_404(Pedido, id=pedido_id)    
     
     if request.method == 'POST':
         metodo_pago = request.POST.get('metodo_pago')
@@ -812,7 +904,7 @@ def listar_pagos_pendientes(request):
         pagos_pendientes = pagos_pendientes.filter(cliente_nombre__icontains=cliente_busqueda)
     
     # Ordenar por fecha de promesa
-    pagos_pendientes = pagos_pendientes.order_by('fecha_promesa')
+    pagos_pendientes = pagos_pendientes.order_by('cliente_nombre')
     
     # Calcular el total pendiente de los pagos filtrados
     total_pendiente = pagos_pendientes.aggregate(total=Sum('pago__monto'))['total'] or 0
@@ -1510,7 +1602,7 @@ def imprimir_recibo_cocina(request, pedido_id):
     # Items de otras áreas (bar, barra, etc.) - solo los que no están entregados
     items_otras_areas = pedido.items_activos.exclude(
         producto__categoria__area_preparacion__nombre='cocina'
-    ).exclude(estado='entregado')
+    ).exclude(estado='listo')
     
     context = {
         'pedido': pedido,

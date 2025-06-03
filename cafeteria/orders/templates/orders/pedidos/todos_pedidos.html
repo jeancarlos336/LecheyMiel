@@ -32,6 +32,7 @@
                                 <tr>
                                     <th scope="col">Pedido</th>
                                     <th scope="col">Mesa</th>
+                                    <th scope="col">Cliente</th>
                                     <th scope="col">Fecha</th>
                                     <th scope="col">Total</th>
                                     <th scope="col">Estado Pedido</th>
@@ -43,7 +44,8 @@
                                 {% for pedido in pedidos %}
                                 <tr>
                                     <td>#{{ pedido.id }}</td>
-                                    <td>Mesa {{ pedido.mesa.numero }}</td>
+                                    <td>{{ pedido.mesa.numero }}</td>
+                                    <td>{{ pedido.nombre_cliente }}</td>
                                     <td>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</td>
                                     <td>${{ pedido.monto_total|floatformat:0 }}</td>
                                     <td>

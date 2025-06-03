@@ -77,6 +77,40 @@
             margin-top: 3mm;
             font-size: 10pt;
         }
+        .btn {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+            margin: 0.25rem;
+        }
+        .btn-primary {
+            color: #fff;
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-secondary {
+            color: #fff;
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .mt-4 {
+            margin-top: 1.5rem;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -159,6 +193,11 @@
         <p><strong>¡Gracias por su preferencia!</strong></p>
         <p>Lo esperamos pronto</p>
         <p>{{ pago.fecha|date:"d/m/Y H:i" }}</p>
+    </div>
+
+    <div class="text-center mt-4 no-print">
+        <button onclick="window.print()" class="btn btn-primary">Imprimir recibo</button>
+        <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-secondary">Volver a ventas</a>
     </div>
 
     <script>

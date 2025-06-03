@@ -1,492 +1,208 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load producto_templatetags %}
+
 {% block extra_css %}
-<style>
-    /* Estilos generales */
-    :root {
-        --primary-color: #007bff;
-        --secondary-color: #6c757d;
-        --success-color: #28a745;
-        --danger-color: #dc3545;
-        --light-color: #f8f9fa;
-        --dark-color: #343a40;
-    }
-
-    /* Estilos de categorías */
-    .categoria-btn {
-        transition: all 0.3s ease;
-        margin-bottom: 8px;
-        margin-right: 4px;
-        border-radius: 20px;
-        font-weight: 500;
-        padding: 6px 12px;
-        white-space: nowrap;
-        font-size: 0.85rem;
-    }
-
-    .categoria-btn.active {
-        background-color: var(--primary-color);
-        color: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-
-    /* CONTENEDOR DE IMAGEN MEJORADO */
-    .producto-img-container {
-        width: 100%;
-        aspect-ratio: 1; /* Relación cuadrada */
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #f8f9fa;
-        flex-shrink: 0;
-    }
-
-    /* IMAGEN DEL PRODUCTO OPTIMIZADA */
-    .producto-img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* Muestra imagen completa */
-        padding: 8px;
-        transition: transform 0.3s ease;
-        background-color: white;
-        box-sizing: border-box; /* Mejor manejo del padding */
-    }
-
-    /* Efecto hover */
-    .producto-card:hover .producto-img {
-        transform: scale(1.05);
-    }
-
-    /* Tarjeta de producto */
-    .producto-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        height: 100%;
-        border-radius: 8px;
-        border: 1px solid rgba(0,0,0,0.1);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        min-height: 280px;
-    }
-
-    /* Cuerpo de la tarjeta */
-    .producto-card .card-body {
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-    }
-
-    /* Textos */
-    .producto-card .card-title {
-        font-size: 1rem;
-        margin-bottom: 0.3rem;
-        line-height: 1.2;
-    }
-
-    .producto-card .card-text {
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-
-    /* Formulario */
-    .producto-card form {
-        margin-top: auto;
-    }
-
-    .cantidad-input {
-        padding: 6px;
-        font-size: 14px;
-    }
-
-    textarea.form-control {
-        min-height: 60px;
-        font-size: 13px;
-    }
-
-    .btn-agregar {
-        padding: 6px;
-        font-size: 14px;
-    }
-
-    /* Barra de búsqueda */
-    .search-container {
-        position: relative;
-        margin-bottom: 1.5rem;
-    }
-
-    .search-input {
-        padding-left: 40px;
-        border-radius: 20px;
-        border: 1px solid #ddd;
-        transition: all 0.3s;
-    }
-
-    .search-input:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--secondary-color);
-    }
-
-    /* ========= VERSIÓN PARA DESKTOP ========= */
-    @media (min-width: 768px) {
-        .producto-img-container {
-            max-height: 200px; /* Más espacio para imágenes */
-        }
-        .producto-img {
-            padding: 12px; /* Más padding para desktop */
-        }
-    }
-
-    /* ========= VERSIÓN PARA MÓVILES (MEJORADA) ========= */
-    @media (max-width: 767px) {
-        .producto-img-container {
-            max-height: 180px; /* Aumentado para mejor visualización */
-        }
-        
-        .producto-img {
-            padding: 6px; /* Padding ajustado */
-        }
-        
-        .producto-card {
-            min-height: 260px;
-        }
-        
-        .producto-card .card-body {
-            padding: 10px;
-        }
-        
-        .categorias-wrapper {
-            overflow-x: auto;
-            flex-wrap: nowrap;
-            padding-bottom: 10px;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .mobile-category-title {
-            display: block;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            padding: 8px 10px;
-            font-size: 0.95rem;
-            background-color: var(--light-color);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        /* Efecto hover más sutil en móviles */
-        .producto-card:hover .producto-img {
-            transform: scale(1.03);
-        }
-    }
-
-    /* Estilos para el pedido - NUEVOS ESTILOS */
-    .pedido-container {
-        position: sticky;
-        top: 20px;
-        max-height: 90vh;
-        overflow-y: auto;
-    }
-
-    .pedido-item {
-        border-left: 4px solid var(--primary-color);
-        transition: all 0.3s ease;
-        margin-bottom: 8px;
-        padding: 12px;
-        border-radius: 4px;
-        background-color: white;
-    }
-
-    .pedido-item:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .cantidad-controls {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .cantidad-btn {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        font-weight: bold;
-    }
-
-    .cantidad-value {
-        min-width: 30px;
-        text-align: center;
-        font-weight: bold;
-    }
-
-    .eliminar-btn {
-        color: var(--danger-color);
-        background: none;
-        border: none;
-        font-size: 1.1rem;
-        transition: transform 0.2s;
-        cursor: pointer;
-    }
-
-    .eliminar-btn:hover {
-        transform: scale(1.2);
-    }
-
-    .producto-info {
-        flex-grow: 1;
-    }
-
-    .producto-precio {
-        font-weight: bold;
-        color: var(--dark-color);
-    }
-
-    .producto-subtotal {
-        font-weight: bold;
-        color: var(--success-color);
-    }
-
-    .nota-text {
-        font-size: 0.85rem;
-        color: var(--secondary-color);
-        background-color: #f8f9fa;
-        padding: 4px 8px;
-        border-radius: 4px;
-        margin-top: 4px;
-        cursor: pointer;
-    }
-
-    .nota-text i {
-        margin-right: 4px;
-    }
-
-    /* Animación para cambios en cantidad */
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-
-    .pulse-animation {
-        animation: pulse 0.3s ease;
-    }
-
-    /* Animación para eliminación */
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-
-    .slide-out {
-        animation: slideOut 0.3s ease forwards;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/tomar-pedido.css' %}">
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-3">
+    <!-- Header Principal -->
+    <div class="main-header">
+        <h2><i class="fas fa-utensils me-2"></i>Venta Local - Mesa {{ mesa.numero }}</h2>
+    </div>
+
     <div class="row">
         <!-- Sección de productos -->
-        <div class="col-lg-9 col-md-8 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white d-flex align-items-center">
-                    <h3 class="mb-0">
-                        <i class="fas fa-utensils me-2"></i>Tomar Pedido - Mesa {{ mesa.numero }}
-                    </h3>
+        <div class="col-lg-8 col-md-7 mb-4">
+            <!-- Barra de búsqueda -->
+            <div class="search-section">
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="producto-search" class="search-input" 
+                           placeholder="Buscar producto por nombre...">
                 </div>
-                <div class="card-body">
-                    <!-- Barra de búsqueda -->
-                    <div class="search-container mb-3">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="producto-search" class="form-control search-input" 
-                               placeholder="Buscar producto por nombre...">
-                    </div>
+            </div>
 
-                    <!-- Categorías -->
-                    <div class="mb-3">
-                        <h4 class="mb-2">Categorías</h4>
-                        <div class="categorias-wrapper">
-                            {% for categoria in categorias %}
-                                <button 
-                                    class="btn btn-outline-primary categoria-btn {% if categoria.id == categoria_activa %}active{% endif %}"
-                                    data-categoria="{{ categoria.id }}"
-                                    title="{{ categoria.nombre }}"
-                                >
-                                    {{ categoria.nombre|truncatechars:15 }}
-                                </button>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- Título de categoría para móviles -->
-                    <div class="mobile-category-title d-none">
-                        <i class="fas fa-folder-open me-2"></i>
-                        <span id="mobile-category-name"></span>
-                    </div>
-
-                    <!-- Productos por Categoría -->
+            <!-- Categorías -->
+            <div class="categories-section">
+                <h3 class="categories-title">
+                    <i class="fas fa-th-large"></i>
+                    Catálogo de Productos
+                </h3>
+                <div class="categories-wrapper">
+                    <button class="categoria-btn active" data-categoria="all">
+                        <i class="fas fa-th"></i> Todas
+                    </button>
                     {% for categoria in categorias %}
-                        <div 
-                            class="categoria-productos" 
-                            id="categoria-{{ categoria.id }}"
-                            data-categoria="{{ categoria.id }}" 
-                            style="display: {% if categoria.id == categoria_activa %}block{% else %}none{% endif %};"
-                        >
-                            <h4 class="mb-3 d-none d-md-block">{{ categoria.nombre }}</h4>
-                            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 productos-container">
-                                {% for producto in productos_por_categoria|get_item:categoria %}
-                                <div class="col producto-item" data-nombre="{{ producto.nombre|lower }}" data-categoria="{{ categoria.id }}">
-                                    <div class="card producto-card">
-                                        <!-- Imagen del producto -->                                     
-                                    
-                                        <div class="producto-img-container">
-                                            {% if producto.imagen %}
-                                                <img src="{{ producto.imagen.url }}" 
-                                                    alt="{{ producto.nombre }}" 
-                                                    class="producto-img"
-                                                    loading="lazy">  <!-- Optimización de carga -->
-                                            {% else %}
-                                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">
-                                                    <i class="fas fa-utensils fa-3x"></i>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                        <div class="card-body d-flex flex-column">
-                                            <h5 class="card-title">{{ producto.nombre }}</h5>
-                                            <p class="card-text text-muted mb-2">${{ producto.precio|floatformat:0 }}</p>
-                                            {% if producto.descripcion %}
-                                                <small class="text-muted mb-2">{{ producto.descripcion|truncatechars:50 }}</small>
-                                            {% endif %}
-                                            <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}" class="mt-auto">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="add_producto">
-                                                <input type="hidden" name="producto_id" value="{{ producto.id }}">
-                                                <input type="hidden" name="categoria_activa" value="{{ categoria.id }}">
-                                                <div class="input-group mb-2">
-                                                    <input 
-                                                        type="number" 
-                                                        name="cantidad" 
-                                                        value="1" 
-                                                        min="1" 
-                                                        class="form-control cantidad-input"
-                                                        aria-label="Cantidad"
-                                                    >
-                                                </div>
-                                                <!-- Campo para notas -->
-                                                <div class="mb-2">
-                                                    <textarea 
-                                                        name="notas" 
-                                                        class="form-control form-control-sm" 
-                                                        placeholder="Notas (ej: sin palta)"
-                                                        rows="2"
-                                                    ></textarea>
-                                                </div>
-                                                <button 
-                                                    type="submit" 
-                                                    class="btn btn-success w-100 btn-agregar"
-                                                    data-producto="{{ producto.nombre }}"
-                                                >
-                                                    <i class="fas fa-plus me-1"></i>
-                                                    <span>Agregar</span>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
+                        <button class="categoria-btn" data-categoria="{{ categoria.id }}">
+                            {{ categoria.nombre }}
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Lista de productos -->
+            <div class="products-section">
+                <div class="products-header">
+                    <span id="category-title">Todos los productos</span>
+                </div>
+                
+                <!-- Productos por categoría específica -->
+                {% for categoria in categorias %}
+                    <div class="categoria-productos" id="categoria-{{ categoria.id }}" 
+                         data-categoria="{{ categoria.id }}" style="display: none;">
+                        {% for producto in productos_por_categoria|get_item:categoria %}
+                        <div class="producto-item" data-nombre="{{ producto.nombre|lower }}" 
+                             data-categoria="{{ categoria.id }}">
+                            <div class="producto-info">
+                                <h5 class="producto-nombre">{{ producto.nombre }}</h5>                          
+                                <div class="producto-precio">${{ producto.precio|floatformat:0 }}</div>                              
+                            </div>
+                            <div class="producto-actions">
+
+                                <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_producto">
+                                    <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                                    <input type="hidden" name="cantidad" value="1">
+                                    <input type="hidden" name="categoria_activa" value="{{ categoria.id }}">
+                                    <input type="hidden" name="notas" id="notas-{{ producto.id }}" value="">
+                                    <button type="submit" class="add-btn" title="Agregar {{ producto.nombre }}">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </form>
                             </div>
                         </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}         
+
+                <!-- Vista de todas las categorías (por defecto) -->
+                <div class="categoria-productos" id="categoria-all" data-categoria="all">
+                    {% for categoria in categorias %}
+                        {% for producto in productos_por_categoria|get_item:categoria %}
+                        <div class="producto-item" data-nombre="{{ producto.nombre|lower }}" 
+                            data-categoria="{{ categoria.id }}">
+                            <div class="producto-info">
+                                <h5 class="producto-nombre">{{ producto.nombre }}</h5>
+                                <div class="producto-precio">${{ producto.precio|floatformat:0 }}</div>
+                            </div>
+                            <div class="producto-actions">                                
+                                <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_producto">
+                                    <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                                    <input type="hidden" name="cantidad" value="1">
+                                    <input type="hidden" name="categoria_activa" value="{{ categoria.id }}">
+                                    <input type="hidden" name="notas" id="notas-{{ producto.id }}" value="">
+                                    <button type="submit" class="add-btn" title="Agregar {{ producto.nombre }}">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
                     {% endfor %}
                 </div>
             </div>
         </div>
 
-        <!-- Detalles del Pedido - Versión Mejorada -->
-        <div class="col-lg-3 col-md-4">
-            <div class="card shadow-sm pedido-container">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                    <h3 class="mb-0">
+        <!-- Panel del Carrito -->
+        <div class="col-lg-4 col-md-5">
+            <div class="cart-container">
+                <!-- Header del carrito -->
+                <div class="cart-header">
+                    <h3 class="cart-title">
                         <i class="fas fa-shopping-cart me-2"></i>Carrito - Mesa {{ mesa.numero }}
                     </h3>
-                    <span class="badge bg-light text-dark">{{ pedido_existente.detalles.count|default:0 }} ítems</span>
+                    <span class="cart-badge">{{ pedido_existente.detalles.count|default:0 }} ítems</span>
                 </div>
-                <div class="card-body">
+
+                <!-- Cuerpo del carrito -->
+                <div class="cart-body">
+                    <!-- Campo para nombre del cliente -->
+                    <div class="mb-3 cliente-field">
+                        <label for="nombre_cliente" class="form-label">Nombre del Cliente:</label>
+                        <input type="text" class="form-control" id="nombre_cliente" 
+                            value="{{ pedido_existente.nombre_cliente|default:'' }}"
+                            placeholder="Ingrese nombre del cliente">
+                        <button id="guardar-cliente" class="btn btn-sm btn-primary mt-2">Guardar</button>
+                    </div>
+
+                    <!-- Lista de productos en el carrito -->
                     {% if pedido_existente %}
-                    <div class="pedido-items mb-3">
                         {% for detalle in pedido_existente.detalles.all %}
-                        <div class="pedido-item">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div class="producto-info">
-                                    <div class="d-flex align-items-center">
-                                        <h6 class="mb-0 me-2">{{ detalle.producto.nombre }}</h6>
-                                        <span class="producto-precio">${{ detalle.producto.precio|floatformat:0 }}</span>
-                                    </div>
-                                    {% if detalle.notas %}
-                                    <div class="nota-text">
-                                        <i class="fas fa-sticky-note me-1"></i>{{ detalle.notas }}
-                                    </div>
-                                    {% endif %}
+                        <div class="cart-item">
+                            <div class="cart-item-info">
+                                <div style="display: flex; justify-content: space-between; width: 100%;">
+                                    <h6 class="cart-item-name">{{ detalle.producto.nombre }}</h6>                                   
+                                    <p class="cart-item-price" data-detalle-id="{{ detalle.id }}">
+                                        ${{ detalle.subtotal|floatformat:0 }}
+                                    </p>
                                 </div>
-                                <button class="eliminar-btn" data-detalle-id="{{ detalle.id }}">
+                                <div class="cart-item-note" 
+                                    onclick="editNote({{ detalle.id }}, '{{ detalle.notas|escapejs }}', '{{ detalle.producto.nombre|escapejs }}')">
+                                    <i class="fas fa-sticky-note me-1"></i>
+                                    {{ detalle.notas|default:"<span style='color:#999'>[Agregar nota]</span>"|safe }}
+                                </div>
+                            </div>
+                            
+                            <!-- Controles de cantidad -->
+                            <div class="quantity-controls">
+                                <button class="quantity-btn decrementar" data-detalle-id="{{ detalle.id }}">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <span class="quantity-value" data-detalle-id="{{ detalle.id }}">
+                                    {{ detalle.cantidad }}
+                                </span>
+                                <button class="quantity-btn incrementar" data-detalle-id="{{ detalle.id }}">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button class="remove-btn" data-detalle-id="{{ detalle.id }}">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
-                            
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="cantidad-controls">
-                                    <button class="btn btn-sm btn-outline-secondary cantidad-btn decrementar" 
-                                            data-detalle-id="{{ detalle.id }}">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <span class="cantidad-value" data-detalle-id="{{ detalle.id }}">
-                                        {{ detalle.cantidad }}
-                                    </span>
-                                    <button class="btn btn-sm btn-outline-secondary cantidad-btn incrementar" 
-                                            data-detalle-id="{{ detalle.id }}">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                                <span class="producto-subtotal">
-                                    ${{ detalle.subtotal|floatformat:0 }}
-                                </span>
-                            </div>
                         </div>
                         {% endfor %}
-                    </div>
-                    
-                    <div class="d-flex justify-content-between mb-3 p-3 bg-light rounded">
-                        <strong class="fs-5">Total</strong>
-                        <span class="h4 mb-0 text-success">${{ total_pedido|floatformat:0 }}</span>
-                    </div>
-                    
-                    <div class="d-grid gap-2">
-                        <a href="{% url 'users:dashboard' %}" class="btn btn-success btn-lg">
+                        
+                        <!-- Total del pedido -->
+                        <div class="cart-total">
+                            <span class="total-label">Total</span>
+                            <span class="total-amount">${{ total_pedido|floatformat:0 }}</span>
+                        </div>
+                        
+                        <!-- Botón de confirmar -->
+                        <button class="confirm-btn" onclick="window.location.href='{% url 'users:dashboard' %}'">
                             <i class="fas fa-check-circle me-2"></i>Confirmar Pedido
-                        </a>
-                    </div>
+                        </button>
                     {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-shopping-cart mb-3" style="font-size: 2rem; color: #ccc;"></i>
-                        <p class="text-muted">El carrito está vacío</p>
-                        <p class="small text-muted">Agrega productos desde el menú</p>
-                    </div>
+                        <!-- Estado vacío del carrito -->
+                        <div class="empty-cart">
+                            <i class="fas fa-shopping-cart"></i>
+                            <h5>Carrito vacío</h5>
+                            <p>Agrega productos desde el menú</p>
+                        </div>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar/editar notas -->
+    <div id="noteModal" class="note-modal">
+        <div class="note-modal-content">
+            <h4 id="noteModalTitle">Agregar nota</h4>
+            <textarea id="noteInput" class="note-input" 
+                      placeholder="Escribe una nota para este producto..."></textarea>
+            <div class="modal-buttons">
+                <button type="button" class="modal-btn btn-cancel" onclick="closeNoteModal()">
+                    Cancelar
+                </button>
+                <button type="button" class="modal-btn btn-confirm" onclick="confirmNote()">
+                    Agregar
+                </button>
             </div>
         </div>
     </div>
@@ -495,407 +211,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    (function() {
-        console.log("🔒 Tomar Pedido - Inicializando medidas de seguridad");
-        window.disableActivityUpdates = true;
-        window.isTomarPedido = true;
-        window.preventRefresh = true;
-        
-        if (window.activityTimeout) {
-            clearTimeout(window.activityTimeout);
-            console.log("🛑 Timeout de actividad limpiado");
-        }
-        
-        if (typeof window.updateUserActivity === 'function') {
-            window.originalUpdateUserActivity = window.updateUserActivity;
-            window.updateUserActivity = function() {
-                console.log("🛑 Bloqueado intento de actualización en Tomar Pedido");
-                return Promise.resolve();
-            };
-        }
-        
-        const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-        events.forEach(event => {
-            document.removeEventListener(event, window.handleUserActivity);
-        });
-    })();
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Función para activar una categoría
-        function activateCategory(categoriaId) {
-            const categoriaProductos = document.querySelectorAll('.categoria-productos');
-            const categoriaBtns = document.querySelectorAll('.categoria-btn');
-            const mobileCategoryName = document.getElementById('mobile-category-name');
-            
-            // Ocultar todos los productos
-            categoriaProductos.forEach(el => {
-                el.style.display = 'none';
-            });
-    
-            // Desactivar botones
-            categoriaBtns.forEach(el => {
-                el.classList.remove('active');
-            });
-    
-            // Mostrar productos de la categoría seleccionada
-            const productos = document.getElementById(`categoria-${categoriaId}`);
-            if (productos) {
-                productos.style.display = 'block';
-                localStorage.setItem('categoriaActiva', categoriaId);
-                
-                // Actualizar título en móviles
-                const activeBtn = document.querySelector(`.categoria-btn[data-categoria="${categoriaId}"]`);
-                if (activeBtn && mobileCategoryName) {
-                    mobileCategoryName.textContent = activeBtn.title || activeBtn.textContent.trim();
-                }
-                
-                // Scroll suave hasta la sección de productos
-                setTimeout(() => {
-                    productos.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
-            }
-    
-            // Activar botón actual
-            const activeBtn = document.querySelector(`.categoria-btn[data-categoria="${categoriaId}"]`);
-            if (activeBtn) {
-                activeBtn.classList.add('active');
-                
-                // Asegurar que el botón activo sea visible en móviles
-                if (window.innerWidth < 768) {
-                    activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-                }
-            }
-        }
-        
-        // Event listeners para botones de categoría
-        const categoriaBtns = document.querySelectorAll('.categoria-btn');
-        categoriaBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const categoriaId = this.dataset.categoria;
-                activateCategory(categoriaId);
-            });
-        });
-    
-        // Al cargar la página, verificar si hay una categoría activa en localStorage
-        const categoriaActiva = localStorage.getItem('categoriaActiva');
-        if (categoriaActiva) {
-            activateCategory(categoriaActiva);
-        }
-    
-        // Función para buscar productos
-        function searchProducts(query) {
-            const normalizedQuery = query.toLowerCase().trim();
-            const allProducts = document.querySelectorAll('.producto-item');
-            
-            if (normalizedQuery === '') {
-                // Mostrar todos los productos en sus categorías originales
-                allProducts.forEach(product => {
-                    product.style.display = 'block';
-                    product.classList.remove('highlighted-product');
-                    const categoriaId = product.dataset.categoria;
-                    document.getElementById(`categoria-${categoriaId}`).style.display = 'block';
-                });
-                
-                // Reactivar la categoría activa
-                const activeCategory = localStorage.getItem('categoriaActiva');
-                if (activeCategory) {
-                    activateCategory(activeCategory);
-                }
-                return;
-            }
-            
-            // Ocultar todos los productos primero
-            allProducts.forEach(product => {
-                product.style.display = 'none';
-            });
-            
-            // Mostrar solo los productos que coincidan
-            let hasResults = false;
-            allProducts.forEach(product => {
-                const productName = product.dataset.nombre;
-                if (productName.includes(normalizedQuery)) {
-                    product.style.display = 'block';
-                    product.classList.add('highlighted-product');
-                    const categoriaId = product.dataset.categoria;
-                    document.getElementById(`categoria-${categoriaId}`).style.display = 'block';
-                    hasResults = true;
-                }
-            });
-            
-            // Mostrar mensaje si no hay resultados
-            if (!hasResults) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'No se encontraron productos',
-                    text: 'No hay productos que coincidan con tu búsqueda',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-            }
-        }
-        
-        // Event listener para la búsqueda
-        const searchInput = document.getElementById('producto-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                searchProducts(this.value);
-            });
-            
-            // Manejar la tecla Escape para limpiar búsqueda
-            searchInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    this.value = '';
-                    searchProducts('');
-                }
-            });
-        }
-        
-        // Función para actualizar cantidad
-        function updateCantidad(detalleId, action) {
-            const cantidadElement = document.querySelector(`.cantidad-value[data-detalle-id="${detalleId}"]`);
-            let cantidad = parseInt(cantidadElement.textContent);
-            
-            if (action === 'incrementar') {
-                cantidad += 1;
-            } else if (action === 'decrementar' && cantidad > 1) {
-                cantidad -= 1;
-            } else {
-                return; // No hacer nada si es decrementar y cantidad es 1
-            }
-            
-            // Guardar categoría activa antes de enviar
-            const categoriaActiva = localStorage.getItem('categoriaActiva') || 
-                                  document.querySelector('.categoria-btn.active')?.dataset.categoria;
-            
-            fetch('', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: `action=update_cantidad&detalle_id=${detalleId}&cantidad=${cantidad}&categoria_activa=${categoriaActiva}`
-            })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                } else if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // Animación de feedback
-                    cantidadElement.textContent = cantidad;
-                    cantidadElement.classList.add('pulse-animation');
-                    setTimeout(() => {
-                        cantidadElement.classList.remove('pulse-animation');
-                    }, 300);
-                    
-                    // Actualizar subtotal si la respuesta lo incluye
-                    if (data.subtotal) {
-                        const subtotalElement = document.querySelector(`.pedido-item [data-detalle-id="${detalleId}"] .producto-subtotal`);
-                        if (subtotalElement) {
-                            subtotalElement.textContent = `$${data.subtotal}`;
-                            subtotalElement.classList.add('pulse-animation');
-                            setTimeout(() => {
-                                subtotalElement.classList.remove('pulse-animation');
-                            }, 300);
-                        }
-                    }
-                    
-                    // Actualizar total si la respuesta lo incluye
-                    if (data.total) {
-                        const totalElement = document.querySelector('.pedido-container .h4.text-success');
-                        if (totalElement) {
-                            totalElement.textContent = `$${data.total}`;
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire('Error', 'Ocurrió un error al actualizar la cantidad', 'error');
-            });
-        }
-        
-        // Event listeners para botones de cantidad
-        document.addEventListener('click', function(e) {
-            // Incrementar cantidad
-            if (e.target.closest('.incrementar')) {
-                const detalleId = e.target.closest('.incrementar').dataset.detalleId;
-                updateCantidad(detalleId, 'incrementar');
-            }
-            
-            // Decrementar cantidad
-            if (e.target.closest('.decrementar')) {
-                const detalleId = e.target.closest('.decrementar').dataset.detalleId;
-                updateCantidad(detalleId, 'decrementar');
-            }
-            
-            // Eliminar producto
-            const eliminarBtn = e.target.closest('.eliminar-btn');
-            if (eliminarBtn) {
-                e.preventDefault();
-                const detalleId = eliminarBtn.dataset.detalleId;
-                
-                Swal.fire({
-                    title: '¿Eliminar producto?',
-                    text: "¿Estás seguro de que quieres eliminar este producto del carrito?",
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc3545',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Guardar categoría activa antes de enviar
-                        const categoriaActiva = localStorage.getItem('categoriaActiva') || 
-                                              document.querySelector('.categoria-btn.active')?.dataset.categoria;
-                        
-                        fetch('', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                            },
-                            body: `action=remove_producto&detalle_id=${detalleId}&categoria_activa=${categoriaActiva}`
-                        })
-                        .then(response => {
-                            if (response.redirected) {
-                                window.location.href = response.url;
-                            } else if (!response.ok) {
-                                throw new Error('Error en la respuesta del servidor');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data.success) {
-                                // Animación de eliminación
-                                const item = eliminarBtn.closest('.pedido-item');
-                                item.classList.add('slide-out');
-                                setTimeout(() => {
-                                    window.location.reload();
-                                }, 300);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            Swal.fire('Error', 'Ocurrió un error al eliminar el producto', 'error');
-                        });
-                    }
-                });
-            }
-        });
-        
-        // Permitir editar notas directamente
-        document.querySelectorAll('.nota-text').forEach(nota => {
-            nota.addEventListener('click', function() {
-                const detalleId = this.closest('.pedido-item').querySelector('.eliminar-btn').dataset.detalleId;
-                const currentNote = this.textContent.trim().replace('', '').trim();
-                
-                Swal.fire({
-                    title: 'Editar nota',
-                    input: 'text',
-                    inputValue: currentNote,
-                    showCancelButton: true,
-                    confirmButtonText: 'Guardar',
-                    cancelButtonText: 'Cancelar',
-                    inputValidator: (value) => {
-                        if (value.length > 100) {
-                            return 'La nota no puede exceder los 100 caracteres';
-                        }
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const newNote = result.value;
-                        
-                        // Guardar categoría activa antes de enviar
-                        const categoriaActiva = localStorage.getItem('categoriaActiva') || 
-                                              document.querySelector('.categoria-btn.active')?.dataset.categoria;
-                        
-                        fetch('', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                            },
-                            body: `action=update_nota&detalle_id=${detalleId}&nota=${encodeURIComponent(newNote)}&categoria_activa=${categoriaActiva}`
-                        })
-                        .then(response => {
-                            if (response.redirected) {
-                                window.location.href = response.url;
-                            } else if (response.ok) {
-                                this.textContent = newNote ? ` ${newNote}` : '';
-                                Swal.fire({
-                                    position: 'top-end',
-                                    icon: 'success',
-                                    title: 'Nota actualizada',
-                                    showConfirmButton: false,
-                                    timer: 1500
-                                });
-                            } else {
-                                throw new Error('Error en la respuesta del servidor');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            Swal.fire('Error', 'Ocurrió un error al guardar la nota', 'error');
-                        });
-                    }
-                });
-            });
-        });
-        
-        // Feedback al agregar productos
-        document.querySelectorAll('.btn-agregar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const productoNombre = this.dataset.producto;
-                
-                // Feedback visual
-                this.innerHTML = '<i class="fas fa-check"></i> Agregado';
-                this.classList.remove('btn-success');
-                this.classList.add('btn-primary');
-                
-                setTimeout(() => {
-                    this.innerHTML = '<i class="fas fa-plus me-1"></i><span>Agregar</span>';
-                    this.classList.remove('btn-primary');
-                    this.classList.add('btn-success');
-                }, 1500);
-                
-                // Notificación
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    timerProgressBar: true,
-                    didOpen: (toast) => {
-                        toast.addEventListener('mouseenter', Swal.stopTimer)
-                        toast.addEventListener('mouseleave', Swal.resumeTimer)
-                    }
-                });
-                
-                Toast.fire({
-                    icon: 'success',
-                    title: `${productoNombre} agregado`
-                });
-            });
-        });
-        
-        // Mejorar experiencia móvil: hacer scroll horizontal en categorías
-        const categoriasWrapper = document.querySelector('.categorias-wrapper');
-        if (categoriasWrapper && window.innerWidth < 768) {
-            const activeBtn = document.querySelector('.categoria-btn.active');
-            if (activeBtn) {
-                setTimeout(() => {
-                    activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-                }, 300);
-            }
-        }
-    });
-</script>
+<script src="{% static 'js/tomar-pedido.js' %}"></script>
 {% endblock %}
