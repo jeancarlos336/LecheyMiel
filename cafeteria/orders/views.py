@@ -24,6 +24,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from django.http import HttpResponse
 
+
+
 #trabajo con las mesas
 @login_required
 def lista_mesas(request):
@@ -414,8 +416,18 @@ def cambiar_estado_pedido(request, pedido_id):
 
 @login_required
 def lista_pedidos_pendientes(request):
-    pedidos = Pedido.objects.filter(estado_pago='pendiente').order_by('fecha_creacion')
+       
+    query = request.GET.get('q', '')    
+    pedidos = Pedido.objects.filter(estado_pago='pendiente').order_by('-fecha_creacion')
     
+    if query:
+        pedidos = pedidos.filter(
+            Q(id__icontains=query) |
+            Q(mesa__numero__icontains=query) |
+            Q(nombre_cliente__icontains=query) |
+            Q(numero_orden__icontains=query)
+        )
+        
     # Preparar detalles por área para cada pedido
     for pedido in pedidos:
         pedido.detalles_por_area = {}
@@ -442,11 +454,57 @@ def lista_pedidos_pendientes(request):
 
 @login_required
 def todos_los_pedidos(request):
-    # Obtener todos los pedidos, ordenados de más reciente a más antiguo
-    pedidos = Pedido.objects.all().order_by('-fecha_creacion')
+    # Obtener parámetros de búsqueda
+    query = request.GET.get('q', '')
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
+    mesa_filtro = request.GET.get('mesa', '')
+    
+    # Comenzar con todos los pedidos
+    pedidos = Pedido.objects.all()
+    
+    # Aplicar filtro de búsqueda general
+    if query:
+        pedidos = pedidos.filter(
+            Q(id__icontains=query) |
+            Q(nombre_cliente__icontains=query) |
+            Q(mesa__numero__icontains=query)
+        )
+    
+    
+    # Filtro por mesa
+    if mesa_filtro:
+        pedidos = pedidos.filter(mesa__numero=mesa_filtro)
+    
+    # Filtros de fecha
+    if fecha_desde:
+        try:
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            pedidos = pedidos.filter(fecha_creacion__date__gte=fecha_desde_obj)
+        except ValueError:
+            pass
+    
+    if fecha_hasta:
+        try:
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            pedidos = pedidos.filter(fecha_creacion__date__lte=fecha_hasta_obj)
+        except ValueError:
+            pass
+    
+    # Ordenar de más reciente a más antiguo
+    pedidos = pedidos.order_by('-fecha_creacion')
+    
+    
+    # Obtener mesas únicas para el filtro
+    mesas_disponibles = Pedido.objects.values_list('mesa__numero', flat=True).distinct().order_by('mesa__numero')
     
     context = {
-        'pedidos': pedidos
+        'pedidos': pedidos,
+        'query': query,        
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,        
+        'mesas_disponibles': mesas_disponibles,
+        'total_resultados': pedidos.count(),
     }
     return render(request, 'orders/pedidos/todos_pedidos.html', context)
 
@@ -1161,10 +1219,11 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
                         # Si ya existe, actualizar la cantidad
                         detalle_existente.cantidad += cantidad
                         detalle_existente.save()
+                        nuevo_detalle = detalle_existente
                         message = f'Cantidad de {producto.nombre} actualizada (+{cantidad})'
                     else:
                         # Si no existe, crear nuevo detalle
-                        detalle_existente = DetallePedido.objects.create(
+                        nuevo_detalle = DetallePedido.objects.create(
                             pedido=pedido,
                             producto=producto,
                             cantidad=cantidad,
@@ -1174,18 +1233,33 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
                         )
                         message = f'Producto {producto.nombre} agregado al pedido'
 
+                    # NUEVA LÓGICA: Si el producto NO es de cocina, marcarlo automáticamente como entregado
+                    if producto.categoria.area_preparacion.nombre != AreaPreparacion.COCINA:
+                        nuevo_detalle.estado = 'entregado'
+                        nuevo_detalle.hora_listo = timezone.now()
+                        nuevo_detalle.hora_entrega = timezone.now()
+                        nuevo_detalle.save()
+
                     pedido.calcular_total()
+                    
+                    # Actualizar mensaje según el área de preparación
+                    mensaje_estado = ""
+                    if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
+                        mensaje_estado = "agregado al pedido (requiere preparación en cocina)"
+                    else:
+                        mensaje_estado = "agregado y marcado como entregado automáticamente"
                     
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({
                             'success': True,
-                            'message': message,
+                            'message': f'Producto {producto.nombre} {mensaje_estado}.',
                             'total': float(pedido.monto_total),
-                            'detalle_id': detalle_existente.id,
-                            'cantidad_total': detalle_existente.cantidad
+                            'detalle_id': nuevo_detalle.id,
+                            'cantidad_total': nuevo_detalle.cantidad,
+                            'es_cocina': producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA
                         })
                     
-                    messages.success(request, message)
+                    messages.success(request, f'Producto {producto.nombre} {mensaje_estado}.')
                     
                 elif action == 'remove_producto':
                     detalle_id = request.POST.get('detalle_id')
@@ -1615,3 +1689,17 @@ def imprimir_recibo_cocina(request, pedido_id):
     response = render(request, 'orders/pedidos/recibo_cocina.html', context)
     response['Content-Type'] = 'text/html; charset=utf-8'
     return response
+
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def marcar_recibo_impreso(request, pedido_id):
+    try:
+        pedido = Pedido.objects.get(id=pedido_id)
+        pedido.recibo_cocina_impreso = True
+        pedido.save()
+        return JsonResponse({'status': 'success'})
+    except Pedido.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Pedido no encontrado'}, status=404)

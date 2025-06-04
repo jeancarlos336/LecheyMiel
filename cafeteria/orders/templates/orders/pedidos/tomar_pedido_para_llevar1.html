@@ -1,0 +1,1017 @@
+{% extends "base.html" %}
+{% load static %}
+{% load producto_templatetags %}
+
+{% block extra_css %}
+    <style>
+    :root {
+        --primary-color: #007bff;
+        --secondary-color: #6c757d;
+        --success-color: #28a745;
+        --danger-color: #dc3545;
+        --light-color: #f8f9fa;
+        --dark-color: #343a40;
+    }
+
+    /* ======================= ESTILOS GENERALES ======================= */
+    /* ... Resto de tu CSS original ... */
+
+    /* ========== TU CSS ORIGINAL (SIN CAMBIOS/CONFLICTOS) ========== */
+    .categoria-btn {
+        transition: all 0.3s ease;
+        margin-bottom: 8px;
+        margin-right: 4px;
+        border-radius: 20px;
+        font-weight: 500;
+        padding: 6px 12px;
+        white-space: nowrap;
+        font-size: 0.85rem;
+    }
+
+    .categoria-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    /* CONTENEDOR DE IMAGEN MEJORADO (Versión responsive) */
+    .producto-img-container {
+        width: 100%;
+        aspect-ratio: 1;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        flex-shrink: 0;
+    }
+
+    .producto-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 10px;
+        transition: transform 0.3s ease;
+        background-color: white;
+        box-sizing: border-box;
+    }
+
+    .producto-card:hover .producto-img {
+        transform: scale(1.05);
+    }
+
+    .producto-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        height: 100%;
+        border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 280px;
+    }
+
+    .producto-card .card-body {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    .producto-card .card-title {
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+        line-height: 1.2;
+    }
+
+    .producto-card .card-text {
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .producto-card form {
+        margin-top: auto;
+    }
+
+    .cantidad-input {
+        padding: 6px;
+        font-size: 14px;
+    }
+
+    textarea.form-control {
+        min-height: 60px;
+        font-size: 13px;
+    }
+
+    .btn-agregar {
+        padding: 6px;
+        font-size: 14px;
+    }
+
+    .search-container {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-input {
+        padding-left: 40px;
+        border-radius: 20px;
+        border: 1px solid #ddd;
+        transition: all 0.3s;
+    }
+
+    .search-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--secondary-color);
+    }
+
+    /* ========= VERSIÓN PARA DESKTOP ========= */
+    @media (min-width: 768px) {
+        .producto-img-container {
+            max-height: 220px;
+        }
+        .producto-img {
+            padding: 15px;
+        }
+    }
+
+    /* ========= VERSIÓN PARA MÓVILES (MEJORADA) ========= */
+    @media (max-width: 767px) {
+        .producto-img-container {
+            max-height: 180px;
+        }
+        .producto-img {
+            padding: 8px;
+        }
+        .producto-card {
+            min-height: 260px;
+        }
+        .producto-card .card-body {
+            padding: 10px;
+        }
+        .categorias-wrapper {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .mobile-category-title {
+            display: block;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            padding: 8px 10px;
+            font-size: 0.95rem;
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .producto-card:hover .producto-img {
+            transform: scale(1.03);
+        }
+    }
+
+    /* ======================== ESTILOS PEDIDO ======================== */
+    /* Unifica los estilos de .pedido-item y .cantidad-controls */
+
+    .pedido-container {
+        position: sticky;
+        top: 20px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .pedido-items {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .pedido-item-img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 10px;
+    }
+
+    /* Animaciones */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Estilos específicos para pedidos para llevar */
+    .header-para-llevar {
+        background-color: #28a745 !important;
+    }
+
+    .badge-para-llevar {
+        background-color: #218838;
+    }
+
+    /* ========== ESTILOS UNIFICADOS Y MEJORADOS PARA PEDIDO-ITEMS ========== */
+    /* Estilos compactos para los items del pedido */
+    .pedido-item {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        transition: all 0.2s ease;
+        padding: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .pedido-item:hover {
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .cantidad-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .cantidad-controls .btn {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .cantidad-value {
+        min-width: 35px;
+        text-align: center;
+        font-weight: bold;
+        background-color: #e9ecef;
+        border-radius: 3px;
+        padding: 2px 6px;
+        font-size: 0.9rem;
+    }
+
+    /* Estilos para la sección de notas compacta */
+    .nota-section-compact {
+        margin: 0.5rem 0;
+    }
+
+    .nota-section-compact .input-group-text {
+        padding: 0.25rem 0.5rem;
+        background-color: #f8f9fa;
+        border-color: #ced4da;
+    }
+
+    .nota-input {
+        height: 28px;
+        font-size: 0.8rem !important;
+        padding: 0.25rem 0.5rem;
+        border-color: #ced4da;
+    }
+
+    .nota-input:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    .guardar-nota {
+        height: 28px;
+        padding: 0 0.5rem !important;
+        border-color: #ced4da;
+        transition: all 0.2s ease;
+    }
+
+    .guardar-nota:hover {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+
+    .eliminar-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        transition: all 0.2s ease;
+    }
+
+    .eliminar-btn:hover {
+        background-color: #dc3545;
+        color: white;
+        border-color: #dc3545;
+    }
+
+    .producto-precio {
+        font-size: 0.85rem;
+    }
+
+    .producto-subtotal {
+        color: #198754;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    /* Hacer todo más compacto */
+    .pedido-item .fw-bold {
+        font-size: 0.9rem;
+        line-height: 1.2;
+    }
+
+    .pedido-item .d-flex {
+        margin-bottom: 0.25rem;
+    }
+
+    .pedido-item .d-flex:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Responsive para móviles */
+    @media (max-width: 768px) {
+        .pedido-item {
+            padding: 0.4rem !important;
+        }
+        
+        .cantidad-controls .btn {
+            width: 26px;
+            height: 26px;
+        }
+        
+        .nota-input {
+            font-size: 0.75rem !important;
+        }
+        
+        .cantidad-value {
+            font-size: 0.8rem;
+            min-width: 30px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="row">
+        <!-- Sección de productos -->
+        <div class="col-lg-9 col-md-8 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header header-para-llevar text-white d-flex align-items-center">
+                    <h3 class="mb-0">
+                        <i class="fas fa-shopping-bag me-2"></i>Tomar Pedido Para Llevar - {{ tipo_orden.nombre }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Barra de búsqueda -->
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="producto-search" class="form-control search-input" 
+                               placeholder="Buscar producto por nombre...">
+                    </div>
+
+                    <!-- Datos del cliente -->
+                    {% if not pedido_existente %}
+                    <div class="mb-4">
+                        <h4 class="mb-3">Datos del Cliente</h4>
+                        <form method="post" action="{% url 'orders:crear_pedido_para_llevar' tipo_orden.id %}" id="form-cliente">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="create_pedido">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="nombre_cliente" class="form-label">Nombre del Cliente</label>
+                                    <input type="text" class="form-control" id="nombre_cliente" name="nombre_cliente" 
+                                           placeholder="Nombre del cliente" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="numero_orden" class="form-label">Pedido #</label>
+                                    <input type="text" class="form-control bg-light" id="numero_orden" 
+                                           name="numero_orden" value="{{ numero_orden }}" readonly>
+                                </div>
+                                <div class="col-md-12 mt-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Iniciar Pedido
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-4">
+                        <div class="d-md-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Cliente:</strong> {{ pedido_existente.nombre_cliente }}
+                                <span class="badge bg-secondary ms-2">{{ pedido_existente.numero_orden }}</span>
+                            </div>
+                            <div class="mt-2 mt-md-0">
+                                <span class="badge badge-para-llevar">{{ tipo_orden.nombre }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Categorías -->
+                    <div class="mb-3">
+                        <h4 class="mb-2">Categorías</h4>
+                        <div class="categorias-wrapper">
+                            {% for categoria in categorias %}
+                                <button 
+                                    class="btn btn-outline-primary categoria-btn {% if categoria.id == categoria_activa %}active{% endif %}"
+                                    data-categoria="{{ categoria.id }}"
+                                    title="{{ categoria.nombre }}"
+                                >
+                                    {{ categoria.nombre|truncatechars:15 }}
+                                </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Título de categoría para móviles -->
+                    <div class="mobile-category-title d-none">
+                        <i class="fas fa-folder-open me-2"></i>
+                        <span id="mobile-category-name"></span>
+                    </div>
+
+                    <!-- Productos por Categoría -->
+                    {% for categoria in categorias %}
+                        <div 
+                            class="categoria-productos" 
+                            id="categoria-{{ categoria.id }}"
+                            data-categoria="{{ categoria.id }}" 
+                            style="display: {% if categoria.id == categoria_activa %}block{% else %}none{% endif %};"
+                        >
+                            <h4 class="mb-3 d-none d-md-block">{{ categoria.nombre }}</h4>
+                            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 productos-container">
+                                {% for producto in productos_por_categoria|get_item:categoria %}
+                                <div class="col producto-item" data-nombre="{{ producto.nombre|lower }}" data-categoria="{{ categoria.id }}">
+                                    <div class="card producto-card">
+                                        <!-- Imagen del producto -->
+                                        <div class="producto-img-container">
+                                            {% if producto.imagen %}
+                                                <img src="{{ producto.imagen.url }}" 
+                                                     alt="{{ producto.nombre }}" 
+                                                     class="producto-img"
+                                                     loading="lazy">
+                                            {% else %}
+                                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                                                    <i class="fas fa-utensils fa-3x"></i>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="card-title">{{ producto.nombre }}</h5>
+                                            <p class="card-text text-muted mb-2">${{ producto.precio|floatformat:0 }}</p>
+                                            {% if producto.descripcion %}
+                                                <small class="text-muted mb-2">{{ producto.descripcion|truncatechars:50 }}</small>
+                                            {% endif %}
+                                            <form method="post" action="{% if pedido_existente %}{% url 'orders:tomar_pedido_para_llevar' tipo_orden.id pedido_existente.id %}{% else %}#{% endif %}" class="mt-auto">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="add_producto">
+                                                <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                                                <input type="hidden" name="categoria_activa" value="{{ categoria.id }}">
+                                                <div class="input-group mb-2">
+                                                    <input 
+                                                        type="number" 
+                                                        name="cantidad" 
+                                                        value="1" 
+                                                        min="1" 
+                                                        class="form-control cantidad-input"
+                                                        {% if not pedido_existente %}disabled{% endif %}
+                                                    >
+                                                </div>
+                                                <!-- Campo para notas -->
+                                                <div class="mb-2">
+                                                    <textarea 
+                                                        name="notas" 
+                                                        class="form-control form-control-sm" 
+                                                        placeholder="Notas especiales"
+                                                        rows="2"
+                                                        {% if not pedido_existente %}disabled{% endif %}
+                                                    ></textarea>
+                                                </div>
+                                                <button 
+                                                    type="submit" 
+                                                    class="btn btn-success w-100 btn-agregar"
+                                                    data-producto="{{ producto.nombre }}"
+                                                    {% if not pedido_existente %}disabled{% endif %}
+                                                >
+                                                    <i class="fas fa-plus me-1"></i>
+                                                    <span>Agregar</span>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+      
+        <!-- Detalles del Pedido -->
+        <div class="col-lg-3 col-md-4">
+            <div class="card shadow-sm pedido-container">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">
+                        <i class="fas fa-receipt me-2"></i>Pedido Actual
+                    </h3>
+                    <span class="badge bg-light text-dark">{{ pedido_existente.detalles.count|default:0 }} ítems</span>
+                </div>
+                <div class="card-body">
+                    {% if pedido_existente %}
+                    <!-- Reemplaza la sección de pedido-items en tu template -->
+                    <div class="list-group mb-3 pedido-items">
+                        {% for detalle in pedido_existente.detalles.all %}
+                            <div class="pedido-item border rounded p-2 mb-2">
+                                <!-- Información del producto -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <span class="fw-bold">{{ detalle.producto.nombre }}</span>
+                                        <span class="producto-precio ms-2 text-muted">${{ detalle.producto.precio|floatformat:0 }}</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger eliminar-btn" 
+                                            data-detalle-id="{{ detalle.id }}" 
+                                            title="Eliminar producto">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Campo para editar notas (compacto) -->
+                                <div class="nota-section-compact mb-2">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light border-end-0">
+                                            <i class="fas fa-sticky-note text-muted" style="font-size: 0.7rem;"></i>
+                                        </span>
+                                        <input 
+                                            type="text" 
+                                            class="form-control nota-input border-start-0" 
+                                            data-detalle-id="{{ detalle.id }}"
+                                            placeholder="Notas..."
+                                            value="{{ detalle.notas|default:'' }}"
+                                            style="font-size: 0.8rem;"
+                                        >
+                                        <button class="btn btn-outline-primary guardar-nota px-2" 
+                                                data-detalle-id="{{ detalle.id }}"
+                                                title="Guardar nota">
+                                            <i class="fas fa-save" style="font-size: 0.7rem;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Controles de cantidad y subtotal -->
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="cantidad-controls d-flex align-items-center">
+                                        <button class="btn btn-sm btn-outline-secondary cantidad-btn decrementar" 
+                                                data-detalle-id="{{ detalle.id }}">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        <span class="cantidad-value mx-2 px-2" data-detalle-id="{{ detalle.id }}">
+                                            {{ detalle.cantidad }}
+                                        </span>
+                                        <button class="btn btn-sm btn-outline-secondary cantidad-btn incrementar" 
+                                                data-detalle-id="{{ detalle.id }}">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                    <span class="producto-subtotal fw-bold">
+                                        ${{ detalle.subtotal|floatformat:0 }}
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %} 
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 p-2 bg-light rounded">
+                        <strong class="fs-5">Total</strong>
+                        <span class="h4 mb-0">${{ total_pedido|floatformat:0 }}</span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'users:dashboard' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-check-circle me-2"></i>Confirmar Pedido
+                        </a>                        
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart mb-3" style="font-size: 2rem; color: #ccc;"></i>
+                        <p class="text-muted">Primero debes crear el pedido</p>
+                        <p class="text-muted">Ingresa los datos del cliente arriba</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>      
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+
+    (function() {
+        console.log("🔒 Crear Pedido Para Llevar - Inicializando medidas de seguridad");
+        window.disableActivityUpdates = true;
+        window.isCrearPedidoParaLlevar = true;
+        window.preventRefresh = true;
+        
+        if (window.activityTimeout) {
+            clearTimeout(window.activityTimeout);
+            console.log("🛑 Timeout de actividad limpiado");
+        }
+        
+        if (typeof window.updateUserActivity === 'function') {
+            window.originalUpdateUserActivity = window.updateUserActivity;
+            window.updateUserActivity = function() {
+                console.log("🛑 Bloqueado intento de actualización en Crear Pedido Para Llevar");
+                return Promise.resolve();
+            };
+        }
+        
+        const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+        events.forEach(event => {
+            document.removeEventListener(event, window.handleUserActivity);
+        });
+    })();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Guardar la categoría seleccionada en localStorage
+        const categoriaBtns = document.querySelectorAll('.categoria-btn');
+        const categoriaProductos = document.querySelectorAll('.categoria-productos');
+        const searchInput = document.getElementById('producto-search');
+        const mobileCategoryName = document.getElementById('mobile-category-name');
+        
+        // Función para activar una categoría
+        function activateCategory(categoriaId) {
+            // Ocultar todos los productos
+            categoriaProductos.forEach(el => {
+                el.style.display = 'none';
+            });
+    
+            // Desactivar botones
+            categoriaBtns.forEach(el => {
+                el.classList.remove('active');
+            });
+    
+            // Mostrar productos de la categoría seleccionada
+            const productos = document.getElementById(`categoria-${categoriaId}`);
+            if (productos) {
+                productos.style.display = 'block';
+                localStorage.setItem('categoriaActiva', categoriaId);
+                
+                // Actualizar título en móviles
+                const activeBtn = document.querySelector(`.categoria-btn[data-categoria="${categoriaId}"]`);
+                if (activeBtn && mobileCategoryName) {
+                    mobileCategoryName.textContent = activeBtn.title || activeBtn.textContent.trim();
+                }
+                
+                // Scroll suave hasta la sección de productos
+                setTimeout(() => {
+                    productos.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+    
+            // Activar botón actual
+            const activeBtn = document.querySelector(`.categoria-btn[data-categoria="${categoriaId}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                
+                // Asegurar que el botón activo sea visible en móviles
+                if (window.innerWidth < 768) {
+                    activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                }
+            }
+        }
+        
+        // Event listeners para botones de categoría
+        categoriaBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const categoriaId = this.dataset.categoria;
+                activateCategory(categoriaId);
+            });
+        });
+    
+        // Al cargar la página, verificar si hay una categoría activa en localStorage
+        const categoriaActiva = localStorage.getItem('categoriaActiva');
+        if (categoriaActiva) {
+            activateCategory(categoriaActiva);
+        }
+    
+        // Función para buscar productos
+        function searchProducts(query) {
+            const normalizedQuery = query.toLowerCase().trim();
+            const allProducts = document.querySelectorAll('.producto-item');
+            
+            if (normalizedQuery === '') {
+                // Mostrar todos los productos en sus categorías originales
+                allProducts.forEach(product => {
+                    product.style.display = 'block';
+                    const categoriaId = product.dataset.categoria;
+                    document.getElementById(`categoria-${categoriaId}`).style.display = 'block';
+                });
+                
+                // Reactivar la categoría activa
+                const activeCategory = localStorage.getItem('categoriaActiva');
+                if (activeCategory) {
+                    activateCategory(activeCategory);
+                }
+                return;
+            }
+            
+            // Ocultar todos los productos primero
+            allProducts.forEach(product => {
+                product.style.display = 'none';
+            });
+            
+            // Mostrar solo los productos que coincidan
+            let hasResults = false;
+            allProducts.forEach(product => {
+                const productName = product.dataset.nombre;
+                if (productName.includes(normalizedQuery)) {
+                    product.style.display = 'block';
+                    const categoriaId = product.dataset.categoria;
+                    document.getElementById(`categoria-${categoriaId}`).style.display = 'block';
+                    hasResults = true;
+                }
+            });
+            
+            // Mostrar mensaje si no hay resultados
+            if (!hasResults) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'No se encontraron productos',
+                    text: 'No hay productos que coincidan con tu búsqueda',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
+        }
+        
+        // Event listener para la búsqueda
+        searchInput.addEventListener('input', function() {
+            searchProducts(this.value);
+        });
+        
+        // Manejar la tecla Escape para limpiar búsqueda
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                this.value = '';
+                searchProducts('');
+            }
+        });
+        
+        // Manejo unificado de todos los botones del pedido
+        document.addEventListener('click', function(e) {
+            // Botón eliminar producto
+            const eliminarBtn = e.target.closest('.eliminar-btn'); // Cambiado de .eliminar-producto a .eliminar-btn
+            if (eliminarBtn) {
+                e.preventDefault();
+                const detalleId = eliminarBtn.dataset.detalleId;
+
+                Swal.fire({
+                    title: '¿Eliminar producto?',
+                    text: "Esta acción no se puede deshacer",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const categoriaActiva = localStorage.getItem('categoriaActiva') || document.querySelector('.categoria-btn.active')?.dataset.categoria;
+                    
+                        fetch('', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: `action=remove_producto&detalle_id=${detalleId}&categoria_activa=${categoriaActiva}`
+                        })
+                        .then(response => {
+                            if (response.redirected) {
+                                window.location.href = response.url;
+                                return;
+                            }
+
+                            const contentType = response.headers.get("content-type");
+                            if (contentType && contentType.indexOf("application/json") !== -1) {
+                                return response.json();
+                            } else {
+                                throw new Error('Respuesta no es JSON');
+                            }
+                        })
+                        .then(data => {
+                            if (data && data.success) {
+                                eliminarBtn.closest('.pedido-item').remove(); // Cambiado de .list-group-item a .pedido-item
+                                document.querySelector('.h4.mb-0').textContent = `$${data.total.toFixed(0)}`;
+                                Swal.fire('Eliminado', data.message, 'success');
+                            } else if (data && data.error) {
+                                Swal.fire('Error', data.error, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire('Error', 'Ocurrió un error al eliminar el producto', 'error');
+                        });
+                    }
+                });
+                return;
+            }
+
+            // Botones de incrementar/decrementar cantidad
+            const cantidadBtn = e.target.closest('.cantidad-btn');
+            if (cantidadBtn) {
+                e.preventDefault();
+                const detalleId = cantidadBtn.dataset.detalleId;
+                const isIncrement = cantidadBtn.classList.contains('incrementar');
+                const isDecrement = cantidadBtn.classList.contains('decrementar');
+                
+                if (isIncrement || isDecrement) {
+                    const action = isIncrement ? 'increment_cantidad' : 'decrement_cantidad';
+                    const categoriaActiva = localStorage.getItem('categoriaActiva') || document.querySelector('.categoria-btn.active')?.dataset.categoria;
+
+                    fetch('', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: `action=${action}&detalle_id=${detalleId}&categoria_activa=${categoriaActiva}`
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                            return;
+                        }
+
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            return response.json();
+                        } else {
+                            throw new Error('Respuesta no es JSON');
+                        }
+                    })
+                    .then(data => {
+                        if (data && data.success) {
+                            // Actualizar cantidad
+                            const cantidadSpan = document.querySelector(`.cantidad-value[data-detalle-id="${detalleId}"]`);
+                            if (cantidadSpan) {
+                                cantidadSpan.textContent = data.nueva_cantidad;
+                            }
+
+                            // Actualizar subtotal del producto
+                            const subtotalSpan = cantidadBtn.closest('.pedido-item').querySelector('.producto-subtotal');
+                            if (subtotalSpan) {
+                                subtotalSpan.textContent = `$${data.nuevo_subtotal.toFixed(0)}`;
+                            }
+
+                            // Actualizar total general
+                            const totalElement = document.querySelector('.h4.mb-0');
+                            if (totalElement) {
+                                totalElement.textContent = `$${data.total.toFixed(0)}`;
+                            }
+
+                            // Si la cantidad llega a 0, eliminar el item
+                            if (data.nueva_cantidad === 0) {
+                                cantidadBtn.closest('.pedido-item').remove();
+                            }
+                        } else if (data && data.error) {
+                            Swal.fire('Error', data.error, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'Ocurrió un error al actualizar la cantidad', 'error');
+                    });
+                }
+            }
+            
+            // Botón guardar nota
+            const guardarNotaBtn = e.target.closest('.guardar-nota');
+            if (guardarNotaBtn) {
+                e.preventDefault();
+                const detalleId = guardarNotaBtn.dataset.detalleId;
+                const notaInput = document.querySelector(`.nota-input[data-detalle-id="${detalleId}"]`);
+                
+                if (!notaInput) {
+                    Swal.fire('Error', 'No se encontró el campo de nota', 'error');
+                    return;
+                }
+                
+                const nota = notaInput.value;
+                const categoriaActiva = localStorage.getItem('categoriaActiva') || 
+                                    document.querySelector('.categoria-btn.active')?.dataset.categoria;
+
+                fetch('', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: `action=update_nota&detalle_id=${detalleId}&nota=${encodeURIComponent(nota)}&categoria_activa=${categoriaActiva}`
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return;
+                    }
+
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        return response.json();
+                    } else {
+                        throw new Error('Respuesta no es JSON');
+                    }
+                })
+                .then(data => {
+                    if (data && data.success) {
+                        Swal.fire({
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Nota guardada',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    } else if (data && data.error) {
+                        Swal.fire('Error', data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error', 'Ocurrió un error al guardar la nota', 'error');
+                });
+            }
+        });
+
+        // Manejo especial para Enter en campos de nota (usando delegación de eventos)
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.classList.contains('nota-input')) {
+                e.preventDefault();
+                const detalleId = e.target.dataset.detalleId;
+                const guardarBtn = document.querySelector(`.guardar-nota[data-detalle-id="${detalleId}"]`);
+                
+                if (guardarBtn) {
+                    guardarBtn.click();
+                }
+            }
+        });
+                
+        
+        
+        // Feedback al agregar productos
+        document.querySelectorAll('.btn-agregar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const productoNombre = this.dataset.producto;
+                
+                // Feedback visual
+                this.innerHTML = '<i class="fas fa-check"></i> Agregado';
+                this.classList.remove('btn-success');
+                this.classList.add('btn-primary');
+                
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-plus me-1"></i><span>Agregar</span>';
+                    this.classList.remove('btn-primary');
+                    this.classList.add('btn-success');
+                }, 1500);
+                
+                // Notificación
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+                
+                Toast.fire({
+                    icon: 'success',
+                    title: `${productoNombre} agregado`
+                });
+            });
+        });
+        
+        // Mejorar experiencia móvil: hacer scroll horizontal en categorías
+        const categoriasWrapper = document.querySelector('.categorias-wrapper');
+        if (categoriasWrapper && window.innerWidth < 768) {
+            const activeBtn = document.querySelector('.categoria-btn.active');
+            if (activeBtn) {
+                setTimeout(() => {
+                    activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                }, 300);
+            }
+        }
+        
+       
+    });
+</script>
+{% endblock %}

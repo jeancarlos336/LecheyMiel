@@ -62,5 +62,7 @@ urlpatterns = [
     
     path('pedido/<int:pedido_id>/recibo-cocina/', views.recibo_cocina,name='recibo_cocina'),   
     path('pedido/<int:pedido_id>/imprimir-cocina/', views.imprimir_recibo_cocina,name='imprimir_recibo_cocina'),
+    
+    path('marcar_recibo_impreso/<int:pedido_id>/', views.marcar_recibo_impreso, name='marcar_recibo_impreso'),
 
 ]

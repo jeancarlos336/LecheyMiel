@@ -22,8 +22,66 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1>Todos los Pedidos</h1>
+                <span class="badge bg-secondary fs-6">{{ total_resultados }} resultado{% if total_resultados != 1 %}s{% endif %}</span>
             </div>
 
+            <!-- Formulario de búsqueda y filtros -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-search me-2"></i>Buscar y Filtrar Pedidos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <!-- Búsqueda general -->
+                        <div class="col-md-4">
+                            <label for="q" class="form-label">Búsqueda general</label>
+                            <input type="text" class="form-control" id="q" name="q" value="{{ query }}" 
+                                   placeholder="Buscar por ID, cliente o mesa...">
+                        </div>
+                        
+                        <!-- Filtro por mesa -->
+                        <div class="col-md-2">
+                            <label for="mesa" class="form-label">Mesa</label>
+                            <select class="form-select" id="mesa" name="mesa">
+                                <option value="">Todas</option>
+                                {% for mesa_num in mesas_disponibles %}
+                                <option value="{{ mesa_num }}" {% if mesa_filtro == mesa_num|stringformat:"s" %}selected{% endif %}>
+                                    Mesa {{ mesa_num }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Fecha desde -->
+                        <div class="col-md-2">
+                            <label for="fecha_desde" class="form-label">Fecha desde</label>
+                            <input type="date" class="form-control" id="fecha_desde" name="fecha_desde" 
+                                   value="{{ fecha_desde }}">
+                        </div>
+
+                        <!-- Fecha hasta -->
+                        <div class="col-md-2">
+                            <label for="fecha_hasta" class="form-label">Fecha hasta</label>
+                            <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta" 
+                                   value="{{ fecha_hasta }}">
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search me-1"></i>Buscar
+                            </button>
+                            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Limpiar filtros
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de resultados -->
             <div class="card">
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -80,9 +138,17 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-4">
+                                    <td colspan="8" class="text-center py-4">
                                         <div class="alert alert-info mb-0" role="alert">
-                                            No hay pedidos registrados
+                                            {% if query or estado_filtro or estado_pago_filtro or fecha_desde or fecha_hasta or mesa_filtro %}
+                                                <i class="fas fa-search me-2"></i>No se encontraron pedidos que coincidan con los criterios de búsqueda.
+                                                <br>
+                                                <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-sm btn-outline-primary mt-2">
+                                                    Ver todos los pedidos
+                                                </a>
+                                            {% else %}
+                                                No hay pedidos registrados
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -103,6 +169,33 @@
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        // Auto-submit del formulario cuando se cambian los filtros (opcional)
+        const selectFilters = document.querySelectorAll('#mesa');
+        selectFilters.forEach(function(select) {
+            select.addEventListener('change', function() {
+                // Descomenta la siguiente línea si quieres que se envíe automáticamente
+                // this.form.submit();
+            });
+        });
+
+        // Validación de fechas
+        const fechaDesde = document.getElementById('fecha_desde');
+        const fechaHasta = document.getElementById('fecha_hasta');
+        
+        fechaDesde.addEventListener('change', function() {
+            if (fechaHasta.value && this.value > fechaHasta.value) {
+                alert('La fecha desde no puede ser mayor que la fecha hasta');
+                this.value = '';
+            }
+        });
+
+        fechaHasta.addEventListener('change', function() {
+            if (fechaDesde.value && this.value < fechaDesde.value) {
+                alert('La fecha hasta no puede ser menor que la fecha desde');
+                this.value = '';
+            }
         });
     });
 </script>

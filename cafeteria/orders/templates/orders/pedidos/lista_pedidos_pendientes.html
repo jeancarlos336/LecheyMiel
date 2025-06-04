@@ -4,6 +4,33 @@
     <div class="row">
         <div class="col-12">
             <h1 class="mb-4">Pedidos Pendientes</h1>
+            <form method="get" class="mb-4">
+                <div class="input-group">
+                    <input type="text" 
+                           class="form-control" 
+                           name="q" 
+                           placeholder="Buscar por mesa, cliente o número de pedido..." 
+                           value="{{ query }}">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                    {% if query %}
+                    <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
+                    {% endif %}
+                </div>
+            </form>            
+            <!-- Resultados de la búsqueda -->
+            {% if query and not pedidos %}
+            <div class="alert alert-warning">
+                No se encontraron pedidos con "{{ query }}"
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
             {% for pedido in pedidos %}
             <div class="card mb-3">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -49,12 +76,16 @@
                             <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-outline-primary me-2">
                                 <i class="fas fa-sync"></i> Actualizar Estado
                             </a>
-                            <!-- Código modificado para los botones de acción -->
-                             <a href="{% url 'orders:imprimir_recibo_cocina' pedido.id %}" 
-                                target="_blank" 
-                                class="btn btn-sm btn-outline-primary">
-                                    🖨️ Cocina
+                            
+                            <!-- Botón de impresión de cocina con estado -->
+                            <a href="{% url 'orders:imprimir_recibo_cocina' pedido.id %}" 
+                               target="_blank" 
+                               class="btn btn-sm {% if pedido.recibo_cocina_impreso %}btn-success{% else %}btn-outline-primary{% endif %} me-2"
+                               id="btn-cocina-{{ pedido.id }}"
+                               onclick="marcarComoImpreso({{ pedido.id }})">
+                                <i class="fas fa-print"></i> Cocina
                             </a>
+                            
                             <div class="d-flex justify-content-end">
                                 {% if pedido.puede_cerrarse %}
                                 <a href="{% url 'orders:procesar_pago' pedido.id %}" class="btn btn-success">
@@ -78,4 +109,34 @@
         </div>
     </div>
 </div>
+
+<script>
+// Función para marcar el recibo como impreso
+document.addEventListener('DOMContentLoaded', function() {
+    // Restaurar estados de los botones
+    document.querySelectorAll('[id^="btn-cocina-"]').forEach(btn => {
+        const pedidoId = btn.id.split('-')[2];
+        if(localStorage.getItem(`cocina-impreso-${pedidoId}`)) {
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-success');
+        }
+    });
+});
+
+function marcarComoImpreso(pedidoId) {
+    const btn = document.getElementById(`btn-cocina-${pedidoId}`);
+    
+    // Cambiar el estilo
+    btn.classList.remove('btn-outline-primary');
+    btn.classList.add('btn-success');
+    
+    // Guardar en localStorage
+    localStorage.setItem(`cocina-impreso-${pedidoId}`, 'true');
+    
+    // Opcional: aún puedes enviar la petición al servidor
+    fetch(`/orders/imprimir_recibo_cocina/${pedidoId}/`, {
+        // ... configuración de la petición
+    });
+}
+</script>
 {% endblock %}
