@@ -836,7 +836,7 @@ def informe_ventas(request):
         resumen_por_metodo[nombre] = monto
     
     # Obtener pagos para mostrar en la tabla
-    lista_pagos = pagos.select_related('pedido').order_by('-fecha')
+    lista_pagos = pagos.select_related('pedido').order_by('-pedido_id')
     
     context = {
         'pagos': lista_pagos,
