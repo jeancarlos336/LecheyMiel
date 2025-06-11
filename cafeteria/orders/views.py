@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView,View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_POST
-from datetime import datetime,date
+from datetime import datetime,date,timedelta
 from django.db.models import Q,Sum
 import json
 from django.utils import timezone
@@ -607,7 +607,23 @@ def imprimir_recibo_pedido(request, pedido_id):
         'total_correcto': total_correcto,
         'cambio_correcto': cambio_correcto
     })
-
+    
+@login_required
+def boleta(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Filtrar solo los detalles activos
+    detalles_activos = pedido.detalles.exclude(estado='cancelado')
+    
+    # Calcular el total correcto basado solo en detalles activos
+    total_correcto = sum(detalle.subtotal for detalle in detalles_activos)
+    
+    return render(request, 'orders/pedidos/boleta.html', {
+        'pedido': pedido,
+        'detalles_activos': detalles_activos,
+        'total_correcto': total_correcto
+    })
+    
 @login_required
 def pedidos_preparacion(request):
     # Determinar el área del usuario actual
@@ -818,8 +834,8 @@ def informe_ventas(request):
     
     if fecha_fin:
         try:
-            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
-            pagos = pagos.filter(fecha__lte=fecha_fin_obj)
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+            pagos = pagos.filter(fecha__lt=fecha_fin_obj)
         except ValueError:
             fecha_fin = ''
     
@@ -1703,3 +1719,6 @@ def marcar_recibo_impreso(request, pedido_id):
         return JsonResponse({'status': 'success'})
     except Pedido.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Pedido no encontrado'}, status=404)
+    
+    
+

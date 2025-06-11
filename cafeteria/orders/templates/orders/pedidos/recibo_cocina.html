@@ -164,9 +164,43 @@
         .btn-imprimir:hover {
             background: #0056b3;
         }
+        .btn {
+            padding: 10px 15px;
+            margin: 5px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .mt-4 {
+            margin-top: 20px;
+        }
+        
+        /* ESTA ES LA REGLA IMPORTANTE QUE FALTABA */
         @media print {
-            .btn-imprimir {
-                display: none;
+            .btn-imprimir,
+            .no-print {
+                display: none !important;
             }
         }
     </style>
@@ -175,122 +209,81 @@
     <h1 class="titulo">ORDEN DE COCINA</h1>
     
     <div class="numero-pedido">
-        PEDIDO #{{ pedido.id }}
+        PEDIDO #12345
     </div>
     
-    {% if pedido.mesa %}
-        <div class="mesa-info">
-            MESA {{ pedido.mesa.numero }}
-        </div>
-    {% else %}
-        <div class="cliente-info">
-            {{ pedido.tipo_orden.nombre|upper }}
-            {% if pedido.nombre_cliente %}
-                <br>{{ pedido.nombre_cliente|upper }}
-            {% endif %}
-            {% if pedido.numero_orden %}
-                <br>{{ pedido.numero_orden }}
-            {% endif %}
-        </div>
-    {% endif %}
+    <div class="mesa-info">
+        MESA 5
+    </div>
 
     <div class="info-row">
         <span>Fecha:</span>
-        <span>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</span>
+        <span>11/06/2025 14:30</span>
     </div>
 
     <!-- SECCIÓN COCINA (PRIORITARIA) -->
-    {% if items_cocina %}
-        <div class="items-header cocina">
-            🔥 COCINA - PRIORITARIO 🔥
+    <div class="items-header cocina">
+        🔥 COCINA - PRIORITARIO 🔥
+    </div>
+    
+    <div class="item">
+        <div class="item-cantidad">2</div>
+        <div class="item-nombre">HAMBURGUESA ESPECIAL</div>
+        
+        <div class="area-preparacion cocina">
+            PARRILLA
         </div>
         
-        {% for item in items_cocina %}
-            <div class="item">
-                <div class="item-cantidad">{{ item.cantidad }}</div>
-                <div class="item-nombre">{{ item.producto.nombre }}</div>
-                
-                {% if item.producto.categoria.area_preparacion %}
-                    <div class="area-preparacion cocina">
-                        {{ item.producto.categoria.area_preparacion.nombre|upper }}
-                    </div>
-                {% endif %}
-                
-                {% if item.notas %}
-                    <div class="item-notas">
-                        <strong>NOTAS:</strong> {{ item.notas }}
-                    </div>
-                {% endif %}
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <!-- SECCIÓN OTRAS ÁREAS -->
-    {% if items_otras_areas %}
-        <div class="items-header otras-areas">
-            🍹 OTRAS ÁREAS 🍹
-        </div>
-        
-        {% for item in items_otras_areas %}
-            <div class="item">
-                <div class="item-cantidad">{{ item.cantidad }}</div>
-                <div class="item-nombre">{{ item.producto.nombre }}</div>
-                
-                {% if item.producto.categoria.area_preparacion %}
-                    <div class="area-preparacion {{ item.producto.categoria.area_preparacion.nombre|lower }}">
-                        {{ item.producto.categoria.area_preparacion.nombre|upper }}
-                    </div>
-                {% else %}
-                    <div class="area-preparacion">
-                        SIN ÁREA
-                    </div>
-                {% endif %}
-                
-                {% if item.notas %}
-                    <div class="item-notas">
-                        <strong>NOTAS:</strong> {{ item.notas }}
-                    </div>
-                {% endif %}
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <!-- MENSAJE SI NO HAY ITEMS -->
-    {% if not items_cocina and not items_otras_areas %}
-        <div style="text-align: center; padding: 20px; color: #666;">
-            No hay items pendientes para preparar
-        </div>
-    {% endif %}
-
-    {% if pedido.notas %}
-        <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 15px;">
-            <strong>NOTAS DEL PEDIDO:</strong><br>
-            {{ pedido.notas }}
-        </div>
-    {% endif %}
-
-    <div class="footer-info">
-        <div class="timestamp">
-            Impreso: {{ fecha_impresion|date:"d/m/Y H:i:s" }}
-        </div>
-        <div class="mesero-info">
-            Mesero: {{ pedido.mesero.get_full_name|default:pedido.mesero.username }}
+        <div class="item-notas">
+            <strong>NOTAS:</strong> Sin cebolla, extra queso
         </div>
     </div>
 
-    {% if not para_impresion %}
-        <button class="btn-imprimir" onclick="window.print()">
+    <div class="item">
+        <div class="item-cantidad">1</div>
+        <div class="item-nombre">PASTA CARBONARA</div>
+        
+        <div class="area-preparacion cocina">
+            COCINA CALIENTE
+        </div>
+    </div>
+
+    <!-- SECCIÓN OTRAS ÁREAS -->
+    <div class="items-header otras-areas">
+        🍹 OTRAS ÁREAS 🍹
+    </div>
+    
+    <div class="item">
+        <div class="item-cantidad">3</div>
+        <div class="item-nombre">CERVEZA ARTESANAL</div>
+        
+        <div class="area-preparacion bar">
+            BAR
+        </div>
+    </div>
+
+    <div class="footer-info">
+        <div class="timestamp">
+            Impreso: 11/06/2025 14:32:15
+        </div>
+        <div class="mesero-info">
+            Mesero: Juan Pérez
+        </div>
+    </div>
+
+    <div class="text-center mt-4 no-print">
+        <button onclick="window.print()" class="btn btn-primary">
             🖨️ IMPRIMIR
         </button>
-    {% endif %}
+        <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-secondary">Volver a ventas</a>
+    </div>
 
     <script>
-        {% if para_impresion %}
-            window.onload = function() {
-                window.print();
-            }
-        {% endif %}
-        
+
+         window.onload = function() {
+            window.print();
+        }    
+
         function imprimirRecibo() {
             window.print();
         }

@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("🔄 La página se actualizará automáticamente en 30 segundos");
             setTimeout(() => {
                 window.location.reload();
-            }, 30000);
+            }, 45000);
         } else {
             console.log("🔒 Actualización automática desactivada para:", path);
         }
@@ -226,3 +226,33 @@ function mostrarNotificacion(tipo, mensaje) {
         alert(mensaje);
     }
 }
+
+
+
+function actualizarTemporizadores() {
+    const ahora = new Date();
+
+    document.querySelectorAll('.timer-cell').forEach(cell => {
+        const startTimeStr = cell.dataset.startTime;
+        if (!startTimeStr) return; // Previene errores si falta el dato
+
+        const startTime = new Date(startTimeStr);
+        const diffMs = ahora - startTime;
+        const diffMin = Math.floor(diffMs / 60000); // Diferencia en minutos
+        const diffSeg = Math.floor((diffMs % 60000) / 1000); // Segundos restantes
+
+        const texto = `${diffMin}m ${diffSeg}s`;
+        cell.textContent = texto;
+
+        // ⚠️ Cambia estilo si supera 30 minutos
+        if (diffMin >= 30) {
+            cell.classList.add('text-danger', 'fw-bold'); // resalta en rojo y negrita
+        } else {
+            cell.classList.remove('text-danger', 'fw-bold');
+        }
+    });
+}
+
+actualizarTemporizadores(); // Ejecutar una vez al cargar
+setInterval(actualizarTemporizadores, 1000); // Luego cada segundo
+

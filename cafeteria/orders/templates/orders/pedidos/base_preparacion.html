@@ -83,7 +83,7 @@
                                     <td class="text-center">{{ detalle.cantidad }}</td>
                                     <td class="text-center timer-cell" data-start-time="{{ detalle.hora_solicitud|date:'c' }}">
                                         {{ detalle.hora_solicitud|timesince }}
-                                    </td>
+                                    </td>                                   
                                     <td class="text-center">
                                         <span class="badge estado-badge 
                                             {% if detalle.estado == 'pendiente' %}bg-secondary
