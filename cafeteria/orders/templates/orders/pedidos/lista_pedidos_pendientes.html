@@ -78,10 +78,10 @@
                             </a>
                             
                             <!-- Botón de impresión de cocina con estado -->
-                            <a href="{% url 'orders:boleta' pedido.id %}" class="btn btn-outline-info me-2" >
+                            <a href="{% url 'orders:boleta_mobile' pedido.id %}" class="btn btn-outline-info me-2" >
                                  <i class="fas fa-receipt"></i> Imprimir Boleta
                             </a>
-                            <a href="{% url 'orders:imprimir_recibo_cocina' pedido.id %}" 
+                            <a href="{% url 'orders:imprimir_orden_mobile' pedido.id %}" 
                                class="btn btn-sm {% if pedido.recibo_cocina_impreso %}btn-success{% else %}btn-outline-primary{% endif %} me-2"
                                id="btn-cocina-{{ pedido.id }}"
                                onclick="marcarComoImpreso({{ pedido.id }})">

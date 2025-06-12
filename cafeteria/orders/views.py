@@ -7,7 +7,6 @@ from products.models import Producto,Categoria,AreaPreparacion
 from users.models import Usuario,Rol
 from django.db import transaction
 from django.contrib import messages
-from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView,View
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -18,13 +17,12 @@ import json
 from django.utils import timezone
 from django.core.paginator import Paginator
 from decimal import Decimal
-
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-
-from django.http import HttpResponse
-
-
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_http_methods
+import socket
+import logging
 
 #trabajo con las mesas
 @login_required
@@ -1589,7 +1587,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
             
         elif estado_pago == 'pendiente':
             # Crear registro de pago pendiente
-            metodo_pago = request.POST.get('metodo_pago', 'pendiente')
+            metodo_pago = 'pendiente'
             cliente_nombre = request.POST.get('nombre_cliente', '')
             FECHA_PROMESA_DEFAULT = '2060-12-31'
             fecha_promesa = request.POST.get('fecha_promesa', FECHA_PROMESA_DEFAULT)
@@ -1722,3 +1720,575 @@ def marcar_recibo_impreso(request, pedido_id):
     
     
 
+#impresora termica
+# views.py - VERSIÓN OPTIMIZADA PARA XPRINTER XP-A160H
+
+
+# Configurar logging
+logger = logging.getLogger('printer')
+
+
+@login_required
+def imprimir_orden_mobile(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Usar la propiedad area_preparacion del detalle
+    items_cocina = [item for item in pedido.items_activos 
+                   if item.area_preparacion and item.area_preparacion.nombre.lower() == 'cocina']
+    
+    items_otras_areas = [item for item in pedido.items_activos 
+                        if not item.area_preparacion or item.area_preparacion.nombre.lower() != 'cocina']
+    
+    context = {
+        'pedido': pedido,
+        'items_cocina': items_cocina,
+        'items_otras_areas': items_otras_areas,
+        'fecha_impresion': timezone.now(),
+        'es_mobile': True,
+    }
+    
+    return render(request, 'orders/pedidos/recibo_cocina_mobile.html', context)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def enviar_a_impresora_termica(request, pedido_id):
+    """
+    Envía la orden directamente a la impresora térmica Xprinter XP-A160H
+    """
+    try:
+        pedido = get_object_or_404(Pedido, id=pedido_id)
+        
+        # Generar contenido para impresora térmica (formato ESC/POS optimizado)
+        contenido_impresion = generar_ticket_xprinter_a160h(pedido)
+        
+        # Enviar a impresora por red
+        resultado = enviar_a_impresora_red(contenido_impresion)
+        
+        if resultado['success']:
+            logger.info(f"Orden {pedido.id} impresa correctamente en XP-A160H")            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Orden enviada a impresora XP-A160H correctamente'
+            })
+        else:
+            logger.error(f"Error al imprimir orden {pedido.id}: {resultado['error']}")          
+            return JsonResponse({
+                'success': False, 
+                'message': f'Error al imprimir: {resultado["error"]}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Excepción al imprimir orden {pedido_id}: {str(e)}")
+        return JsonResponse({
+            'success': False, 
+            'message': f'Error: {str(e)}'
+        })
+
+def generar_ticket_xprinter_a160h(pedido):
+    """
+    Genera el contenido de impresión en formato ESC/POS optimizado para Xprinter XP-A160H
+    """
+    # Comandos ESC/POS específicos para XP-A160H
+    ESC = chr(27)
+    GS = chr(29)
+    
+    # Comandos básicos
+    INIT = ESC + "@"                    # Inicializar impresora
+    RESET = ESC + "c" + chr(0)          # Reset completo
+    
+    # Texto
+    BOLD_ON = ESC + "E" + chr(1)        # Negrita ON (más compatible)
+    BOLD_OFF = ESC + "E" + chr(0)       # Negrita OFF
+    DOUBLE_HEIGHT = ESC + "!" + chr(16) # Altura doble
+    DOUBLE_WIDTH = ESC + "!" + chr(32)  # Ancho doble
+    DOUBLE_SIZE = ESC + "!" + chr(48)   # Tamaño doble (alto + ancho)
+    NORMAL_SIZE = ESC + "!" + chr(0)    # Tamaño normal
+    
+    # Alineación
+    CENTER = ESC + "a" + chr(1)         # Centrar
+    LEFT = ESC + "a" + chr(0)           # Alinear izquierda
+    RIGHT = ESC + "a" + chr(2)          # Alinear derecha
+    
+    # Corte de papel (específico para XP-A160H con auto-cut)
+    FULL_CUT = GS + "V" + chr(65) + chr(0)      # Corte completo
+    PARTIAL_CUT = GS + "V" + chr(66) + chr(0)   # Corte parcial
+    
+    # Avance de papel
+    FEED_LINES = lambda n: ESC + "d" + chr(n)   # Avanzar n líneas
+    
+    # Caracteres especiales para separadores
+    SEPARATOR_CHAR = "="
+    DASH_CHAR = "-"
+    
+    detalles = pedido.detalles.all()  # <- Aquí quitamos cualquier exclude()
+    # Items de cocina
+    # Filtrar solo por área de preparación (sin excluir por estado)
+    items_cocina = detalles.filter(
+        producto__categoria__area_preparacion__nombre='cocina'
+    )
+    
+    items_otras_areas = detalles.exclude(
+        producto__categoria__area_preparacion__nombre='cocina'
+    )
+    
+    # Construir el ticket optimizado para XP-A160H
+    ticket = INIT + RESET  # Inicializar y resetear
+    
+    # ENCABEZADO
+    ticket += CENTER + DOUBLE_SIZE + BOLD_ON
+    ticket += "ORDEN DE COCINA\n"
+    ticket += BOLD_OFF + NORMAL_SIZE
+    ticket += SEPARATOR_CHAR * 32 + "\n"
+    
+    # INFORMACIÓN DEL PEDIDO
+    ticket += DOUBLE_HEIGHT + BOLD_ON
+    ticket += f"PEDIDO #{pedido.id}\n"
+    ticket += BOLD_OFF + NORMAL_SIZE
+    
+    if pedido.mesa:
+        ticket += DOUBLE_WIDTH + BOLD_ON
+        ticket += f"MESA {pedido.mesa.numero}\n"
+        ticket += BOLD_OFF + NORMAL_SIZE
+    
+    ticket += SEPARATOR_CHAR * 32 + "\n"
+    ticket += LEFT  # Cambiar a alineación izquierda
+    
+    # INFORMACIÓN ADICIONAL
+    ticket += f"Fecha: {pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n"
+    ticket += f"Mesero: {pedido.mesero.get_full_name()}\n"
+    if pedido.nombre_cliente:
+        ticket += f"Cliente: {pedido.nombre_cliente}\n"
+    
+    ticket += SEPARATOR_CHAR * 32 + "\n"
+    
+    # SECCIÓN COCINA
+    if items_cocina:
+        ticket += CENTER + BOLD_ON + DOUBLE_HEIGHT
+        ticket += "*** COCINA ***\n"
+        ticket += BOLD_OFF + NORMAL_SIZE + LEFT
+        ticket += SEPARATOR_CHAR * 32 + "\n"
+        
+        for item in items_cocina:
+            # Cantidad y producto
+            ticket += BOLD_ON + f"{item.cantidad}x "
+            ticket += f"{item.producto.nombre.upper()}\n" + BOLD_OFF
+            
+            # Precio si está disponible
+            #if hasattr(item, 'precio_unitario') and item.precio_unitario:
+             #   ticket += f"    ${item.precio_unitario:.2f} c/u\n"
+            
+            # Notas
+            if item.notas:
+                ticket += f"    NOTAS: {item.notas}\n"
+            
+            ticket += DASH_CHAR * 32 + "\n"
+    
+    # SECCIÓN OTRAS ÁREAS
+    if items_otras_areas:
+        ticket += CENTER + BOLD_ON + DOUBLE_HEIGHT
+        ticket += "*** OTRAS AREAS ***\n"
+        ticket += BOLD_OFF + NORMAL_SIZE + LEFT
+        ticket += SEPARATOR_CHAR * 32 + "\n"
+        
+        for item in items_otras_areas:
+            area = item.producto.categoria.area_preparacion.nombre.upper() if item.producto.categoria.area_preparacion else "GENERAL"
+            
+            # Cantidad, producto y área
+            ticket += BOLD_ON + f"{item.cantidad}x "
+            ticket += f"{item.producto.nombre.upper()}\n" + BOLD_OFF
+            ticket += f"    [{area}]\n"
+            
+            # Precio si está disponible
+            #if hasattr(item, 'precio_unitario') and item.precio_unitario:
+             #   ticket += f"    ${item.precio_unitario:.2f} c/u\n"
+            
+            # Notas
+            if item.notas:
+                ticket += f"    NOTAS: {item.notas}\n"
+            
+            ticket += DASH_CHAR * 32 + "\n"
+   
+    # TOTALES (si están disponibles)
+    #if hasattr(pedido, 'monto_total') and pedido.monto_total:        
+     #   ticket += SEPARATOR_CHAR * 32 + "\n"
+      #  ticket += RIGHT + BOLD_ON + DOUBLE_HEIGHT
+       # ticket += f"TOTAL: ${pedido.monto_total:.2f}\n"        
+        #ticket += BOLD_OFF + NORMAL_SIZE + LEFT
+    
+    # PIE DE PÁGINA
+    ticket += SEPARATOR_CHAR * 32 + "\n"
+    ticket += CENTER
+    ticket += f"Impreso: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+    ticket += "Gracias por su pedido\n"
+    
+    # ESPACIADO FINAL Y CORTE
+    ticket += FEED_LINES(3)  # Avanzar 3 líneas antes del corte
+    ticket += PARTIAL_CUT    # Corte parcial (recomendado para XP-A160H)
+    
+    # Codificar en UTF-8 con manejo de errores
+    try:
+        return ticket.encode('utf-8')
+    except UnicodeEncodeError:
+        # Fallback a codificación más básica si hay caracteres problemáticos
+        return ticket.encode('latin-1', errors='replace')
+
+def enviar_a_impresora_red(contenido):
+    """
+    Envía el contenido a la impresora térmica Xprinter XP-A160H por red
+    Optimizado para XP-A160H con mejor manejo de errores
+    """
+    try:
+        from django.conf import settings
+        
+        printer_ip = getattr(settings, 'PRINTER_IP', '10.201.71.207')
+        printer_port = getattr(settings, 'PRINTER_PORT', 9100)
+        timeout = getattr(settings, 'PRINTER_TIMEOUT', 15)  # Aumentado para XP-A160H
+        
+        logger.info(f"Conectando a impresora XP-A160H en {printer_ip}:{printer_port}")
+        
+        # Crear socket con configuración optimizada
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        
+        # Conectar a la impresora
+        sock.connect((printer_ip, printer_port))
+        
+        # Enviar datos en chunks para mejor compatibilidad
+        chunk_size = 1024
+        for i in range(0, len(contenido), chunk_size):
+            chunk = contenido[i:i + chunk_size]
+            sock.send(chunk)
+            # Pequeña pausa para asegurar procesamiento
+            import time
+            time.sleep(0.01)
+        
+        # Cerrar conexión
+        sock.close()
+        
+        logger.info("Impresión enviada exitosamente a XP-A160H")
+        return {'success': True, 'message': 'Impresión exitosa en XP-A160H'}
+        
+    except socket.timeout:
+        error_msg = 'Timeout - Impresora XP-A160H no responde'
+        logger.error(error_msg)
+        return {'success': False, 'error': error_msg}
+    except socket.error as e:
+        error_msg = f'Error de conexión con XP-A160H: {e}'
+        logger.error(error_msg)
+        return {'success': False, 'error': error_msg}
+    except Exception as e:
+        error_msg = f'Error inesperado con XP-A160H: {e}'
+        logger.error(error_msg)
+        return {'success': False, 'error': error_msg}
+
+@login_required
+def test_impresora_xprinter(request):
+    """
+    Vista para probar la conexión con la impresora Xprinter XP-A160H
+    """
+    if request.method == 'POST':
+        # Generar contenido de prueba específico para XP-A160H
+        ESC = chr(27)
+        GS = chr(29)
+        
+        contenido_test = ESC + "@"  # Inicializar
+        contenido_test += ESC + "a" + chr(1)  # Centrar
+        contenido_test += ESC + "E" + chr(1)  # Negrita ON
+        contenido_test += "XPRINTER XP-A160H\n"
+        contenido_test += ESC + "E" + chr(0)  # Negrita OFF
+        contenido_test += "=" * 32 + "\n"
+        contenido_test += "TEST DE IMPRESORA\n"
+        contenido_test += "=" * 32 + "\n"
+        contenido_test += ESC + "a" + chr(0)  # Alinear izquierda
+        contenido_test += f"Fecha: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+        contenido_test += "Si ves esto, la\n"
+        contenido_test += "impresora funciona!\n"
+        contenido_test += "\n"
+        contenido_test += "Velocidad: 160mm/s\n"
+        contenido_test += "Papel: 80mm\n"
+        contenido_test += "Protocolo: ESC/POS\n"
+        contenido_test += "\n" * 3
+        contenido_test += GS + "V" + chr(66) + chr(0)  # Corte parcial
+        
+        resultado = enviar_a_impresora_red(contenido_test.encode('utf-8'))
+        return JsonResponse(resultado)
+    
+    return render(request, 'orders/test_impresora.html', {
+        'printer_model': 'Xprinter XP-A160H',
+        'printer_specs': {
+            'speed': '160mm/s',
+            'paper_width': '80mm',
+            'commands': 'ESC/POS',
+            'auto_cut': 'Sí'
+        }
+    })
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def configurar_impresora_xprinter(request):
+    """
+    Configuración avanzada para Xprinter XP-A160H
+    """
+    try:
+        # Comandos de configuración específicos para XP-A160H
+        ESC = chr(27)
+        GS = chr(29)
+        
+        config_commands = ESC + "@"  # Reset
+        config_commands += ESC + "c" + chr(0)  # Reset completo
+        config_commands += GS + "f" + chr(0)  # Configurar fuente
+        config_commands += ESC + "M" + chr(0)  # Seleccionar conjunto de caracteres
+        config_commands += ESC + "R" + chr(0)  # Seleccionar página de códigos
+        
+        resultado = enviar_a_impresora_red(config_commands.encode('utf-8'))
+        
+        if resultado['success']:
+            return JsonResponse({
+                'success': True,
+                'message': 'Impresora XP-A160H configurada correctamente'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error al configurar: {resultado["error"]}'
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error de configuración: {str(e)}'
+        })
+
+# Función auxiliar para generar códigos de barras (opcional)
+def generar_codigo_barras_pedido(pedido_numero):
+    """
+    Genera código de barras para el número de pedido (opcional)
+    """
+    GS = chr(29)
+    
+    # Configurar código de barras CODE128
+    barcode_commands = GS + "k" + chr(73)  # Seleccionar CODE128
+    barcode_commands += chr(len(str(pedido_numero)))  # Longitud
+    barcode_commands += str(pedido_numero)  # Datos
+    
+    return barcode_commands.encode('utf-8')
+
+def detectar_impresora_red():
+    """
+    Función para detectar automáticamente la IP de la impresora XP-A160H en la red
+    """
+    import subprocess
+    import ipaddress
+    
+    # Obtener IP de la red local
+    try:
+        # Escanear red local común
+        network = ipaddress.IPv4Network('192.168.1.0/24', strict=False)
+        
+        for ip in network.hosts():
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                result = sock.connect_ex((str(ip), 9100))
+                sock.close()
+                
+                if result == 0:
+                    return str(ip)
+            except:
+                continue
+                
+    except Exception as e:
+        logger.error(f"Error detectando impresora: {e}")
+        
+    return None
+
+######################################################################
+#boleta de cliente
+# Configurar logging
+logger = logging.getLogger('printer')
+
+@login_required
+def boleta_mobile(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Filtrar solo los detalles activos
+    detalles_activos = pedido.detalles.exclude(estado='cancelado')
+    
+    # Calcular el total correcto basado solo en detalles activos
+    total_correcto = sum(detalle.subtotal for detalle in detalles_activos)
+    
+    context = {
+        'pedido': pedido,
+        'detalles_activos': detalles_activos,
+        'total_correcto': total_correcto,
+        'fecha_impresion': timezone.now(),
+        'es_mobile': True,
+    }
+    
+    return render(request, 'orders/pedidos/boleta_mobile.html', context)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def enviar_boleta_a_impresora_termica(request, pedido_id):
+    """
+    Envía la boleta directamente a la impresora térmica Xprinter XP-A160H
+    """
+    try:
+        pedido = get_object_or_404(Pedido, id=pedido_id)
+        
+        # Generar contenido de boleta para impresora térmica (formato ESC/POS optimizado)
+        contenido_impresion = generar_boleta_xprinter_a160h(pedido)
+        
+        # Enviar a impresora por red
+        resultado = enviar_a_impresora_red(contenido_impresion)
+        
+        if resultado['success']:
+            logger.info(f"Boleta del pedido {pedido.id} impresa correctamente en XP-A160H")            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Boleta enviada a impresora XP-A160H correctamente'
+            })
+        else:
+            logger.error(f"Error al imprimir boleta del pedido {pedido.id}: {resultado['error']}")          
+            return JsonResponse({
+                'success': False, 
+                'message': f'Error al imprimir: {resultado["error"]}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Excepción al imprimir boleta del pedido {pedido_id}: {str(e)}")
+        return JsonResponse({
+            'success': False, 
+            'message': f'Error: {str(e)}'
+        })
+
+def generar_boleta_xprinter_a160h(pedido):
+    """
+    Genera el contenido de la boleta en formato ESC/POS optimizado para Xprinter XP-A160H
+    """
+    # Comandos ESC/POS específicos para XP-A160H
+    ESC = chr(27)
+    GS = chr(29)
+    
+    # Comandos básicos
+    INIT = ESC + "@"                    # Inicializar impresora
+    RESET = ESC + "c" + chr(0)          # Reset completo
+    
+    # Texto
+    BOLD_ON = ESC + "E" + chr(1)        # Negrita ON
+    BOLD_OFF = ESC + "E" + chr(0)       # Negrita OFF
+    DOUBLE_HEIGHT = ESC + "!" + chr(16) # Altura doble
+    DOUBLE_WIDTH = ESC + "!" + chr(32)  # Ancho doble
+    DOUBLE_SIZE = ESC + "!" + chr(48)   # Tamaño doble (alto + ancho)
+    NORMAL_SIZE = ESC + "!" + chr(0)    # Tamaño normal
+    
+    # Alineación
+    CENTER = ESC + "a" + chr(1)         # Centrar
+    LEFT = ESC + "a" + chr(0)           # Alinear izquierda
+    RIGHT = ESC + "a" + chr(2)          # Alinear derecha
+    
+    # Corte de papel
+    FULL_CUT = GS + "V" + chr(65) + chr(0)      # Corte completo
+    PARTIAL_CUT = GS + "V" + chr(66) + chr(0)   # Corte parcial
+    
+    # Avance de papel
+    FEED_LINES = lambda n: ESC + "d" + chr(n)   # Avanzar n líneas
+    
+    # Caracteres especiales para separadores
+    SEPARATOR_CHAR = "="
+    DASH_CHAR = "-"
+    
+    # Filtrar solo los detalles activos
+    detalles_activos = pedido.detalles.exclude(estado='cancelado')
+    
+    # Calcular el total correcto
+    total_correcto = sum(detalle.subtotal for detalle in detalles_activos)
+    
+    # Construir la boleta optimizada para XP-A160H
+    boleta = INIT + RESET  # Inicializar y resetear
+    
+    # ENCABEZADO
+    boleta += CENTER + DOUBLE_SIZE + BOLD_ON
+    boleta += "CAFETERIA LECHE Y MIEL\n"
+    boleta += BOLD_OFF + NORMAL_SIZE
+    boleta += "Colin s/n\n"
+    boleta += SEPARATOR_CHAR * 32 + "\n"
+    
+    # TÍTULO BOLETA
+    boleta += BOLD_ON + DOUBLE_HEIGHT
+    boleta += "BOLETA DE PEDIDO\n"
+    boleta += BOLD_OFF + NORMAL_SIZE
+    boleta += f"{pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n"
+    boleta += SEPARATOR_CHAR * 32 + "\n"
+    
+    # INFORMACIÓN DEL PEDIDO
+    boleta += LEFT  # Cambiar a alineación izquierda
+    boleta += BOLD_ON + f"Pedido #: {pedido.id}\n" + BOLD_OFF
+    
+    if pedido.mesa:
+        boleta += BOLD_ON + f"Mesa: {pedido.mesa.numero}\n" + BOLD_OFF
+    else:
+        boleta += BOLD_ON + f"{pedido.tipo_orden.nombre}"
+        if pedido.numero_orden:
+            boleta += f" - {pedido.numero_orden}"
+        boleta += "\n" + BOLD_OFF
+        
+        if pedido.nombre_cliente:
+            boleta += BOLD_ON + f"Cliente: {pedido.nombre_cliente}\n" + BOLD_OFF
+    
+    boleta += SEPARATOR_CHAR * 32 + "\n"
+    
+    # ENCABEZADOS DE TABLA
+    boleta += BOLD_ON
+    boleta += f"{'Producto':<20} {'Cant':<4} {'Total':<8}\n"
+    boleta += BOLD_OFF
+    boleta += DASH_CHAR * 32 + "\n"
+    
+    # DETALLES DE PRODUCTOS
+    for detalle in detalles_activos:
+        # Truncar nombre del producto si es muy largo
+        nombre_producto = detalle.producto.nombre
+        if len(nombre_producto) > 18:
+            nombre_producto = nombre_producto[:15] + "..."
+        
+        # Formatear subtotal
+        subtotal_str = f"${detalle.subtotal:,.0f}".replace(',', '.')
+        
+        # Línea del producto
+        boleta += f"{nombre_producto:<20} {detalle.cantidad:<4} {subtotal_str:<8}\n"
+    
+    boleta += DASH_CHAR * 32 + "\n"
+    
+    # TOTAL
+    boleta += RIGHT + BOLD_ON + DOUBLE_HEIGHT
+    boleta += f"TOTAL: ${total_correcto:,.0f}".replace(',', '.') + "\n"
+    boleta += BOLD_OFF + NORMAL_SIZE
+    
+    # ESTADO
+    boleta += CENTER + BOLD_ON
+    boleta += "ESTADO: PENDIENTE DE PAGO\n"
+    boleta += BOLD_OFF
+    
+    boleta += SEPARATOR_CHAR * 32 + "\n"
+    
+    # PIE DE PÁGINA
+    boleta += LEFT
+    boleta += f"Atendido: {pedido.mesero.get_full_name()[:20]}\n"
+    boleta += CENTER + BOLD_ON
+    boleta += "¡Gracias por su preferencia!\n"
+    boleta += BOLD_OFF
+    boleta += f"Boleta generada: {pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n"
+    boleta += "\n"
+    boleta += "Esta es una boleta pre-pago.\n"
+    boleta += "No valida como comprobante fiscal.\n"
+    
+    # ESPACIADO FINAL Y CORTE
+    boleta += FEED_LINES(3)  # Avanzar 3 líneas antes del corte
+    boleta += PARTIAL_CUT    # Corte parcial
+    
+    # Codificar en UTF-8 con manejo de errores
+    try:
+        return boleta.encode('utf-8')
+    except UnicodeEncodeError:
+        # Fallback a codificación más básica si hay caracteres problemáticos
+        return boleta.encode('latin-1', errors='replace')
