@@ -23,6 +23,8 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 import socket
 import logging
+from django.urls import reverse
+
 
 #trabajo con las mesas
 @login_required
@@ -2292,3 +2294,115 @@ def generar_boleta_xprinter_a160h(pedido):
     except UnicodeEncodeError:
         # Fallback a codificación más básica si hay caracteres problemáticos
         return boleta.encode('latin-1', errors='replace')
+    
+    
+##############ELIMINA VENTA COMPLETA############################
+
+
+@login_required
+@require_http_methods(["POST"])
+def eliminar_venta_completa(request, pedido_id):
+    """
+    Elimina completamente una venta y todos sus registros relacionados
+    de todas las tablas: Pedido, DetallePedido, Pago y PagoPendiente
+    """
+    try:
+        # Obtener el pedido o devolver 404 si no existe
+        pedido = get_object_or_404(Pedido, id=pedido_id)
+        
+        # Usar una transacción para asegurar que todo se elimine correctamente
+        # o nada se elimine si hay algún error
+        with transaction.atomic():
+            # 1. Eliminar PagoPendiente si existe
+            pagos_pendientes_eliminados = 0
+            for pago in pedido.pagos.all():
+                if hasattr(pago, 'pendiente_info'):
+                    pago.pendiente_info.delete()
+                    pagos_pendientes_eliminados += 1
+            
+            # 2. Eliminar todos los Pagos relacionados
+            pagos_eliminados = pedido.pagos.count()
+            pedido.pagos.all().delete()
+            
+            # 3. Eliminar todos los DetallePedido
+            detalles_eliminados = pedido.detalles.count()
+            pedido.detalles.all().delete()
+            
+            # 4. Liberar la mesa si existe (cambiar estado a Disponible)
+            mesa_liberada = None
+            if pedido.mesa:
+                mesa_liberada = pedido.mesa
+                mesa_liberada.estado = 'disponible'  # Ajusta según tu modelo de Mesa
+                mesa_liberada.save()
+            
+            # 5. Finalmente eliminar el Pedido
+            pedido_info = {
+                'id': pedido.id,
+                'numero_orden': pedido.numero_orden,
+                'mesa': pedido.mesa.numero if pedido.mesa else 'Para llevar',
+                'cliente': pedido.nombre_cliente or 'Sin nombre',
+                'monto_total': pedido.monto_total,
+                'mesa_liberada': mesa_liberada.numero if mesa_liberada else None
+            }
+            pedido.delete()
+        
+        # Mensaje de éxito con detalles
+        mensaje_mesa = f"\n- Mesa {pedido_info['mesa_liberada']} liberada y disponible" if pedido_info['mesa_liberada'] else ""
+        mensaje = f"""
+        Venta eliminada completamente:
+        - Pedido #{pedido_info['id']} ({pedido_info['numero_orden'] or 'Sin número'})
+        - Mesa: {pedido_info['mesa']}
+        - Cliente: {pedido_info['cliente']}
+        - Monto: ${pedido_info['monto_total']}
+        - Detalles eliminados: {detalles_eliminados}
+        - Pagos eliminados: {pagos_eliminados}
+        - Pagos pendientes eliminados: {pagos_pendientes_eliminados}{mensaje_mesa}
+        """
+        
+        messages.success(request, mensaje)
+        
+        # Si es una petición AJAX, devolver JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': 'Venta eliminada completamente',
+                'pedido_info': pedido_info,
+                'detalles_eliminados': detalles_eliminados,
+                'pagos_eliminados': pagos_eliminados,
+                'pagos_pendientes_eliminados': pagos_pendientes_eliminados,
+                'mesa_liberada': pedido_info['mesa_liberada']
+            })
+        
+        # Redireccionar a la lista de pedidos
+        return redirect('orders:todos_los_pedidos')  # Ajusta la URL según tu configuración
+        
+    except Exception as e:
+        # En caso de error, hacer rollback automático y mostrar mensaje
+        error_msg = f"Error al eliminar la venta: {str(e)}"
+        messages.error(request, error_msg)
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': error_msg
+            }, status=500)
+        
+        return redirect('orders:todos_los_pedidos')
+
+@login_required
+def confirmar_eliminar_venta(request, pedido_id):
+    """
+    Vista para mostrar la página de confirmación antes de eliminar
+    """
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Obtener información para mostrar en la confirmación
+    context = {
+        'pedido': pedido,
+        'detalles_count': pedido.detalles.count(),
+        'pagos_count': pedido.pagos.count(),
+        'pagos_pendientes_count': sum(1 for pago in pedido.pagos.all() if hasattr(pago, 'pendiente_info')),
+        'total_registros': pedido.detalles.count() + pedido.pagos.count() + 1  # +1 por el pedido mismo
+    }
+    
+    return render(request, 'orders/pedidos/confirmar_eliminar_venta.html', context)

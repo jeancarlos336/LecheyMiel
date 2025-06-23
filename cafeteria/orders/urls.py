@@ -72,5 +72,9 @@ urlpatterns = [
     
     path('pedido/<int:pedido_id>/boleta-mobile/', views.boleta_mobile, name='boleta_mobile'),
     path('pedido/<int:pedido_id>/print-boleta-thermal/', views.enviar_boleta_a_impresora_termica, name='print_boleta_thermal'),
+    
+    
+    path('eliminar-venta/<int:pedido_id>/', views.confirmar_eliminar_venta, name='confirmar_eliminar_venta'),
+    path('eliminar-venta/<int:pedido_id>/confirmar/', views.eliminar_venta_completa, name='eliminar_venta_completa'),
 
 ]

@@ -1,0 +1,221 @@
+<!-- orders/confirmar_eliminar_venta.html -->
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Eliminación de Venta{% endblock %}
+
+{% block extra_css %}
+<style>
+    .eliminar-venta-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .eliminar-venta-header {
+        background-color: #dc3545;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+    .eliminar-venta-content {
+        padding: 30px;
+    }
+    .warning-box {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 20px 0;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin: 20px 0;
+    }
+    .info-item {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        border-left: 4px solid #007bff;
+    }
+    .info-label {
+        font-weight: bold;
+        color: #495057;
+        font-size: 0.9em;
+    }
+    .info-value {
+        color: #212529;
+        margin-top: 5px;
+    }
+    .records-summary {
+        background-color: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 20px 0;
+    }
+    .records-summary h4 {
+        margin-top: 0;
+        color: #495057;
+    }
+    .record-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .record-item:last-child {
+        border-bottom: none;
+        font-weight: bold;
+        color: #dc3545;
+    }
+    .eliminar-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+    }
+    .eliminar-btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    .eliminar-btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+    .eliminar-btn-danger:hover {
+        background-color: #c82333;
+        color: white;
+        text-decoration: none;
+    }
+    .eliminar-btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+    .eliminar-btn-secondary:hover {
+        background-color: #5a6268;
+        color: white;
+        text-decoration: none;
+    }
+    .eliminar-icon {
+        font-size: 1.2em;
+        margin-right: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="eliminar-venta-container">
+    <div class="eliminar-venta-header">
+        <h1>⚠️ Confirmar Eliminación de Venta</h1>
+    </div>
+    
+    <div class="eliminar-venta-content">
+            <div class="warning-box">
+                <strong>¡ADVERTENCIA!</strong> Esta acción no se puede deshacer. Se eliminarán TODOS los registros relacionados con esta venta.
+                {% if pedido.mesa %}
+                <br><br>
+                <strong>Nota:</strong> La Mesa {{ pedido.mesa.numero }} será liberada y quedará disponible para nuevos pedidos.
+                {% endif %}
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">ID Pedido</div>
+                    <div class="info-value">#{{ pedido.id }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Número de Orden</div>
+                    <div class="info-value">{{ pedido.numero_orden|default:"Sin número" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Mesa/Tipo</div>
+                    <div class="info-value">
+                        {% if pedido.mesa %}
+                            Mesa {{ pedido.mesa.numero }} ({{ pedido.mesa.get_estado_display }})
+                        {% else %}
+                            {{ pedido.tipo_orden.nombre }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Cliente</div>
+                    <div class="info-value">{{ pedido.nombre_cliente|default:"Sin nombre" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Monto Total</div>
+                    <div class="info-value">${{ pedido.monto_total }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Estado</div>
+                    <div class="info-value">{{ pedido.get_estado_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Estado Pago</div>
+                    <div class="info-value">{{ pedido.get_estado_pago_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Fecha</div>
+                    <div class="info-value">{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+
+            <div class="records-summary">
+                <h4>Registros que se eliminarán:</h4>
+                <div class="record-item">
+                    <span>Detalles de pedido:</span>
+                    <span>{{ detalles_count }} registros</span>
+                </div>
+                <div class="record-item">
+                    <span>Pagos:</span>
+                    <span>{{ pagos_count }} registros</span>
+                </div>
+                <div class="record-item">
+                    <span>Pagos pendientes:</span>
+                    <span>{{ pagos_pendientes_count }} registros</span>
+                </div>
+                <div class="record-item">
+                    <span>Pedido principal:</span>
+                    <span>1 registro</span>
+                </div>
+                <div class="record-item">
+                    <span><strong>TOTAL:</strong></span>
+                    <span><strong>{{ total_registros|add:pagos_pendientes_count }} registros</strong></span>
+                </div>
+            </div>
+
+        <div class="eliminar-buttons">
+            <a href="javascript:history.back()" class="eliminar-btn eliminar-btn-secondary">
+                <span class="eliminar-icon">←</span>Cancelar
+            </a>
+            <form method="post" action="{% url 'orders:eliminar_venta_completa' pedido.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="eliminar-btn eliminar-btn-danger" onclick="return confirm('¿Estás ABSOLUTAMENTE SEGURO de eliminar esta venta completa?')">
+                    <span class="eliminar-icon">🗑️</span>Eliminar Completamente
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Agregar doble confirmación por seguridad
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const confirmed = confirm('¿Estás ABSOLUTAMENTE SEGURO de eliminar esta venta completa?\n\nEsta acción NO se puede deshacer.');
+        if (!confirmed) {
+            e.preventDefault();
+        }
+    });
+</script>
+{% endblock %}

@@ -130,8 +130,8 @@
                                         </a>
                                         <a href="{% url 'orders:imprimir_recibo_pedido' pedido.id %}" class="btn btn-sm bg-white text-success border-0 shadow-sm me-1" title="Imprimir boleta">
                                             <i class="fas fa-file-invoice"></i> Imprimir
-                                        </a>
-                                        <a href="{% url 'orders:eliminar_pedido' pedido.id %}" class="btn btn-sm btn-outline-danger" {% if pedido.estado_pago not in 'pendiente,cancelado' %}title="No se puede eliminar pedidos pagados" data-bs-toggle="tooltip"{% endif %}>
+                                        </a>                                     
+                                        <a href="{% url 'orders:confirmar_eliminar_venta' pedido.id %}" class="btn btn-sm btn-outline-danger" {% if pedido.estado_pago not in 'pendiente,cancelado' %}title="No se puede eliminar pedidos pagados" data-bs-toggle="tooltip"{% endif %}>
                                             <i class="fas fa-trash-alt"></i> Eliminar
                                         </a>
                                     </td>
