@@ -221,16 +221,25 @@
       </div>
     </div>
     {% endif %}
-    
-    {% if user.rol.nombre == 'administrador' %}
+
+    {% if user.rol.nombre == 'administrador' or user.rol.nombre == 'caja' %}
     <div class="col-md-4 mb-4">
       <div class="card shadow">
         <div class="card-body">
-          <h5 class="card-title"><i class="fas fa-id-card"></i> Informes</h5>
-          <p class="card-text">Visualiza y actualiza tu información personal, contraseña y preferencias del sistema.</p>
-          <div class="d-flex justify-content-around">
-            <a href="{% url 'orders:informe_ventas' %}" class="btn btn-primary"><i class="fas fa-list-alt me-1"></i> Informe de Ventas</a>
-            <a href="{% url 'compras:balance_anual' %}" class="btn btn-info"><i class="fas fa-user-circle me-1"></i> Balance Anual</a>
+          <h5 class="card-title"><i class="fas fa-chart-bar"></i> Informes</h5>
+          <p class="card-text">Visualiza informes relacionados con ventas y análisis financiero.</p>
+          <div class="d-flex justify-content-around mb-2">
+            <a href="{% url 'orders:informe_ventas' %}" class="btn btn-primary">
+              <i class="fas fa-chart-line me-1"></i> Informe de Ventas
+            </a>
+            <a href="{% url 'compras:balance_anual' %}" class="btn btn-info">
+              <i class="fas fa-balance-scale me-1"></i> Balance Anual
+            </a>
+          </div>
+          <div class="d-flex justify-content-center">
+            <a href="{% url 'orders:ranking_productos' %}" class="btn btn-warning">
+              <i class="fas fa-trophy me-1"></i> Ranking de Ventas
+            </a>
           </div>
         </div>
       </div>

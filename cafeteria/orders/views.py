@@ -12,7 +12,7 @@ from django.views.generic import ListView,View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_POST
 from datetime import datetime,date,timedelta
-from django.db.models import Q,Sum
+from django.db.models import Q,Sum,Count
 import json
 from django.utils import timezone
 from django.core.paginator import Paginator
@@ -24,6 +24,7 @@ from django.views.decorators.http import require_http_methods
 import socket
 import logging
 from django.urls import reverse
+
 
 
 #trabajo con las mesas
@@ -2406,3 +2407,155 @@ def confirmar_eliminar_venta(request, pedido_id):
     }
     
     return render(request, 'orders/pedidos/confirmar_eliminar_venta.html', context)
+
+
+
+
+#####################RANKING DE VENTAS PRODUTUCTOS
+
+
+def ranking_productos_view(request):
+    """Vista principal para mostrar el formulario de selección de fechas"""
+    return render(request, 'orders/pedidos/ranking_productos.html')
+
+def ranking_productos_data(request):
+    """API endpoint que devuelve los datos del ranking - VERSION CORREGIDA"""
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    if not fecha_inicio or not fecha_fin:
+        return JsonResponse({'error': 'Fechas requeridas'}, status=400)
+    
+    try:
+        # PASO 1: Convertir strings a fechas
+        print(f"DEBUG - Fechas recibidas: {fecha_inicio} - {fecha_fin}")
+        fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+        print(f"DEBUG - Fechas convertidas: {fecha_inicio} - {fecha_fin}")
+        
+        # PASO 2: Verificar que existen datos
+        total_detalles = DetallePedido.objects.count()
+        print(f"DEBUG - Total DetallePedido en BD: {total_detalles}")
+        
+        if total_detalles == 0:
+            return JsonResponse({
+                'error': 'No hay datos de DetallePedido en la base de datos',
+                'debug': 'La tabla DetallePedido está vacía'
+            }, status=200)
+        
+        # PASO 3: Verificar filtro de fechas (corregido para timezone)
+        detalles_en_rango = DetallePedido.objects.filter(
+            pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin]
+        ).count()
+        print(f"DEBUG - DetallePedido en rango de fechas: {detalles_en_rango}")
+        
+        # PASO 4: Verificar filtro con estados CORREGIDOS
+        detalles_con_estado = DetallePedido.objects.filter(
+            pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
+            pedido__estado__in=['completado'],  # ✅ Cambiado de 'entregado' a 'completado'
+            estado__in=['Entregado', 'entregado', 'listo']  # ✅ Incluye ambas variantes
+        ).count()
+        print(f"DEBUG - DetallePedido con estados válidos: {detalles_con_estado}")
+        
+        if detalles_con_estado == 0:
+            return JsonResponse({
+                'ranking': [],
+                'totales': {
+                    'total_productos_vendidos': 0,
+                    'valor_total_ventas': 0,
+                    'numero_productos_diferentes': 0
+                },
+                'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d'),
+                'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),
+                'debug': f'No hay datos con estados válidos. Total en rango: {detalles_en_rango}'
+            })
+        
+        # PASO 5: Verificar la consulta básica sin aggregation
+        print("DEBUG - Ejecutando consulta básica...")
+        queryset_basico = DetallePedido.objects.filter(
+            pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
+            pedido__estado__in=['completado'],  # ✅ Corregido
+            estado__in=['Entregado', 'entregado', 'listo']  # ✅ Corregido
+        ).select_related('producto', 'producto__categoria', 'pedido')
+        
+        # Verificar un registro
+        primer_detalle = queryset_basico.first()
+        if primer_detalle:
+            print(f"DEBUG - Primer detalle encontrado: {primer_detalle.id}")
+            print(f"DEBUG - Producto: {primer_detalle.producto.nombre if primer_detalle.producto else 'None'}")
+            print(f"DEBUG - Cantidad: {primer_detalle.cantidad}")
+            print(f"DEBUG - Subtotal: {primer_detalle.subtotal}")
+            print(f"DEBUG - Estado pedido: {primer_detalle.pedido.estado}")
+            print(f"DEBUG - Estado detalle: {primer_detalle.estado}")
+        
+        # PASO 6: Ejecutar la consulta con aggregation
+        print("DEBUG - Ejecutando consulta con aggregation...")
+        
+        # ✅ Usar F() para el cálculo del subtotal en la BD
+        from django.db.models import F
+        
+        ranking = queryset_basico.values(
+            'producto__id',
+            'producto__nombre',
+            'producto__precio',
+            'producto__categoria__nombre'
+        ).annotate(
+            total_vendido=Sum('cantidad'),
+            valor_total=Sum(F('cantidad') * F('precio_unitario')),  # ✅ Cálculo en BD
+            numero_pedidos=Count('pedido', distinct=True)
+        ).order_by('-total_vendido')[:20]
+        
+        print(f"DEBUG - Número de productos en ranking: {len(ranking)}")
+        
+        # PASO 7: Procesar los resultados
+        ranking_list = []
+        for i, item in enumerate(ranking):
+            try:
+                print(f"DEBUG - Procesando item {i+1}: {item}")
+                
+                producto_data = {
+                    'producto__id': item['producto__id'],
+                    'producto__nombre': item['producto__nombre'] or 'Sin nombre',
+                    'producto__precio': float(item['producto__precio']) if item['producto__precio'] is not None else 0,
+                    'producto__categoria__nombre': item['producto__categoria__nombre'] or 'Sin categoría',
+                    'total_vendido': item['total_vendido'] or 0,
+                    'valor_total': float(item['valor_total']) if item['valor_total'] is not None else 0,
+                    'numero_pedidos': item['numero_pedidos'] or 0
+                }
+                ranking_list.append(producto_data)
+                
+            except Exception as e:
+                print(f"DEBUG - Error procesando item {i+1}: {str(e)}")
+                print(f"DEBUG - Datos del item problemático: {item}")
+                continue
+        
+        # Calcular totales generales
+        totales = {
+            'total_productos_vendidos': sum(item['total_vendido'] for item in ranking_list),
+            'valor_total_ventas': sum(item['valor_total'] for item in ranking_list),
+            'numero_productos_diferentes': len(ranking_list)
+        }
+        
+        print(f"DEBUG - Totales calculados: {totales}")
+        
+        return JsonResponse({
+            'ranking': ranking_list,
+            'totales': totales,
+            'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d'),
+            'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),
+            'debug': f'Consulta exitosa. Procesados {len(ranking_list)} productos'
+        })
+        
+    except ValueError as e:
+        print(f"DEBUG - Error de formato de fecha: {str(e)}")
+        return JsonResponse({'error': f'Formato de fecha inválido: {str(e)}'}, status=400)
+    except Exception as e:
+        print(f"DEBUG - Error general: {str(e)}")
+        print(f"DEBUG - Tipo de error: {type(e).__name__}")
+        import traceback
+        print(f"DEBUG - Traceback completo: {traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Error interno: {str(e)}',
+            'error_type': type(e).__name__,
+            'debug': 'Ver logs del servidor para más detalles'
+        }, status=500)

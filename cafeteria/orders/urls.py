@@ -76,5 +76,8 @@ urlpatterns = [
     
     path('eliminar-venta/<int:pedido_id>/', views.confirmar_eliminar_venta, name='confirmar_eliminar_venta'),
     path('eliminar-venta/<int:pedido_id>/confirmar/', views.eliminar_venta_completa, name='eliminar_venta_completa'),
-
+ 
+    
+    path('ranking-productos/', views.ranking_productos_view, name='ranking_productos'),
+    path('api/ranking-productos/', views.ranking_productos_data, name='ranking_productos_api'),
 ]
