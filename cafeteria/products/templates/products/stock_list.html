@@ -1,0 +1,401 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Control de Stock{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos para mejorar la tabla de stock */
+    .stock-table {
+        background-color: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .stock-table thead th {
+        background-color: #343a40;
+        color: #fff;
+        font-weight: 600;
+        border: none;
+        padding: 15px 12px;
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .stock-table tbody td {
+        padding: 12px;
+        vertical-align: middle;
+        border-top: 1px solid #e9ecef;
+        color: #495057;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+    
+    .stock-table tbody tr:hover {
+        background-color: #f8f9fa;
+        transition: background-color 0.2s ease;
+    }
+    
+    .stock-table tbody tr:nth-child(even) {
+        background-color: #fdfdfe;
+    }
+    
+    /* Mejoras para las badges */
+    .badge-stock {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        font-weight: 600;
+        border-radius: 20px;
+        min-width: 60px;
+        text-align: center;
+        display: inline-block;
+    }
+    
+    .badge-stock.sin-stock {
+        background-color: #dc3545;
+        color: #fff;
+        border: 2px solid #c82333;
+    }
+    
+    .badge-stock.stock-bajo {
+        background-color: #ffc107;
+        color: #212529;
+        border: 2px solid #e0a800;
+    }
+    
+    .badge-stock.stock-ok {
+        background-color: #28a745;
+        color: #fff;
+        border: 2px solid #1e7e34;
+    }
+    
+    .badge-cantidad {
+        font-size: 1rem;
+        padding: 8px 16px;
+        font-weight: 700;
+        border-radius: 25px;
+        min-width: 70px;
+        text-align: center;
+        display: inline-block;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .badge-cantidad.badge-danger {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+        border: 2px solid #c82333;
+    }
+    
+    .badge-cantidad.badge-warning {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+        border: 2px solid #e0a800;
+    }
+    
+    .badge-cantidad.badge-success {
+        background-color: #28a745 !important;
+        color: #fff !important;
+        border: 2px solid #1e7e34;
+    }
+    
+    /* Estilo para el nombre del producto */
+    .producto-nombre {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.95rem;
+        text-align: left;
+    }
+    
+    .producto-info {
+        color: #6c757d;
+        font-size: 0.8rem;
+        font-style: italic;
+        text-align: left;
+    }
+    
+    /* Estilo para categorías */
+    .categoria-badge {
+        background-color: #6f42c1;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    /* Botones de acción mejorados */
+    .btn-action {
+        padding: 6px 10px;
+        margin: 0 2px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* Fecha de actualización */
+    .fecha-actualizacion {
+        color: #6c757d;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    /* Mejoras para filtros */
+    .filtros-container {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    /* Mejoras para paginación */
+    .pagination .page-link {
+        color: #495057;
+        border: 1px solid #dee2e6;
+        padding: 8px 16px;
+    }
+    
+    .pagination .page-item.active .page-link {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .stock-table {
+            font-size: 0.8rem;
+        }
+        
+        .stock-table thead th,
+        .stock-table tbody td {
+            padding: 8px 6px;
+        }
+        
+        .badge-cantidad {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-boxes mr-2"></i>Control de Stock
+                    </h3>
+                    <div class="btn-group">
+                        <a href="{% url 'products:stock_alertas' %}" class="btn btn-warning">
+                            <i class="fas fa-exclamation-triangle"></i> Alertas
+                        </a>
+                        {% if productos_sin_stock > 0 %}
+                        <a href="{% url 'products:crear_stock_productos' %}" class="btn btn-info">
+                            <i class="fas fa-plus"></i> Crear Stock ({{ productos_sin_stock }})
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="filtros-container">
+                        <div class="row">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <form method="get" class="form-inline">
+                                    <div class="input-group w-100">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-search"></i>
+                                            </span>
+                                        </div>
+                                        <input type="text" name="search" class="form-control" 
+                                               placeholder="Buscar producto..." value="{{ search_query }}">
+                                        <div class="input-group-append">
+                                            <button class="btn btn-primary" type="submit">
+                                                Buscar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="filter" value="{{ filter_stock }}">
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                                    <a href="?filter=todos&search={{ search_query }}" 
+                                       class="btn btn-outline-secondary {% if filter_stock == 'todos' %}active{% endif %}">
+                                        <i class="fas fa-list"></i> Todos
+                                    </a>
+                                    <a href="?filter=sin_stock&search={{ search_query }}" 
+                                       class="btn btn-outline-danger {% if filter_stock == 'sin_stock' %}active{% endif %}">
+                                        <i class="fas fa-times"></i> Sin Stock
+                                    </a>
+                                    <a href="?filter=stock_bajo&search={{ search_query }}" 
+                                       class="btn btn-outline-warning {% if filter_stock == 'stock_bajo' %}active{% endif %}">
+                                        <i class="fas fa-exclamation"></i> Stock Bajo
+                                    </a>
+                                    <a href="?filter=stock_ok&search={{ search_query }}" 
+                                       class="btn btn-outline-success {% if filter_stock == 'stock_ok' %}active{% endif %}">
+                                        <i class="fas fa-check"></i> Stock OK
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Stock -->
+                    <div class="table-responsive">
+                        <table class="table stock-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-box mr-1"></i>Producto</th>
+                                    <th><i class="fas fa-tags mr-1"></i>Categoría</th>
+                                    <th><i class="fas fa-warehouse mr-1"></i>Stock Actual</th>
+                                    <th><i class="fas fa-level-down-alt mr-1"></i>Stock Mínimo</th>
+                                    <th><i class="fas fa-traffic-light mr-1"></i>Estado</th>
+                                    <th><i class="fas fa-clock mr-1"></i>Última Actualización</th>
+                                    <th><i class="fas fa-cogs mr-1"></i>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in page_obj %}
+                                <tr>
+                                    <td>
+                                        <div class="producto-nombre">{{ stock.producto.nombre }}</div>
+                                        {% if stock.producto.imagen %}
+                                        <div class="producto-info">
+                                            <i class="fas fa-image mr-1"></i>Con imagen
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="categoria-badge">
+                                            {{ stock.producto.categoria.nombre }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-cantidad 
+                                            {% if stock.cantidad_actual == 0 %}badge-danger
+                                            {% elif stock.necesita_reposicion %}badge-warning
+                                            {% else %}badge-success{% endif %}">
+                                            {{ stock.cantidad_actual }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ stock.stock_minimo }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if stock.estado_stock == 'sin_stock' %}
+                                            <span class="badge-stock sin-stock">
+                                                <i class="fas fa-times mr-1"></i>Sin Stock
+                                            </span>
+                                        {% elif stock.estado_stock == 'stock_bajo' %}
+                                            <span class="badge-stock stock-bajo">
+                                                <i class="fas fa-exclamation-triangle mr-1"></i>Stock Bajo
+                                            </span>
+                                        {% else %}
+                                            <span class="badge-stock stock-ok">
+                                                <i class="fas fa-check mr-1"></i>Stock OK
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="fecha-actualizacion">
+                                            <i class="fas fa-calendar-alt mr-1"></i>
+                                            {{ stock.fecha_actualizacion|date:"d/m/Y" }}
+                                            <br>
+                                            <i class="fas fa-clock mr-1"></i>
+                                            {{ stock.fecha_actualizacion|date:"H:i" }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'products:stock_add' stock.producto.id %}" 
+                                               class="btn btn-success btn-action" title="Agregar Stock">
+                                                <i class="fas fa-plus"></i>
+                                            </a>
+                                            <a href="{% url 'products:stock_edit' stock.producto.id %}" 
+                                               class="btn btn-primary btn-action" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'products:stock_movimientos' stock.producto.id %}" 
+                                               class="btn btn-info btn-action" title="Ver Movimientos">
+                                                <i class="fas fa-history"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="mb-3">
+                                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                            <h5 class="text-muted">No se encontraron productos con stock</h5>
+                                        </div>
+                                        {% if productos_sin_stock > 0 %}
+                                        <div class="mt-3">
+                                            <a href="{% url 'products:crear_stock_productos' %}" class="btn btn-info">
+                                                <i class="fas fa-plus mr-2"></i>
+                                                Crear registros de stock para {{ productos_sin_stock }} productos
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginación -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Paginación de stock" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1&search={{ search_query }}&filter={{ filter_stock }}">
+                                        <i class="fas fa-angle-double-left"></i> Primera
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&filter={{ filter_stock }}">
+                                        <i class="fas fa-angle-left"></i> Anterior
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&filter={{ filter_stock }}">
+                                        Siguiente <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&search={{ search_query }}&filter={{ filter_stock }}">
+                                        Última <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

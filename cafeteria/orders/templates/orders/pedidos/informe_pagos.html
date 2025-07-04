@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Informe de Pagos{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4 text-center">Informe de Pagos por Mes</h2>
+
+    <!-- Filtro de fechas -->
+    <form method="get" class="row g-3 justify-content-center">
+        <div class="col-auto">
+            <input type="date" name="desde" class="form-control" value="{{ desde }}" required>
+        </div>
+        <div class="col-auto">
+            <input type="date" name="hasta" class="form-control" value="{{ hasta }}" required>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Consultar</button>
+        </div>
+    </form>
+
+    {% if resumen_mensual %}
+        <!-- Tarjetas resumen -->
+        <div class="row mt-5">
+            {% for mes in resumen_mensual %}
+            <div class="col-md-4 mb-3">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="card-title text-center">{{ mes.mes }}</h5>
+                        <ul class="list-group list-group-flush text-center">
+                            <li class="list-group-item text-primary">Ventas: ${{ mes.total_venta|floatformat:0 }}</li>
+                            <li class="list-group-item text-danger">Costos: ${{ mes.total_costo|floatformat:0 }}</li>
+                            <li class="list-group-item text-success">Ganancia: ${{ mes.total_ganancia|floatformat:0 }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Gráfico -->
+        <div class="mt-5">
+            <canvas id="graficoResumen" height="100"></canvas>
+        </div>
+    {% elif desde and hasta %}
+        <div class="alert alert-warning mt-4 text-center">No hay pagos registrados en ese rango de fechas.</div>
+    {% endif %}
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% if resumen_mensual %}
+<script>
+    const ctx = document.getElementById('graficoResumen').getContext('2d');
+    const grafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [{% for m in resumen_mensual %}'{{ m.mes }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [
+                {
+                    label: 'Ventas',
+                    backgroundColor: '#0d6efd',
+                    data: [{% for m in resumen_mensual %}{{ m.total_venta }}{% if not forloop.last %}, {% endif %}{% endfor %}]
+                },
+                {
+                    label: 'Costos',
+                    backgroundColor: '#dc3545',
+                    data: [{% for m in resumen_mensual %}{{ m.total_costo }}{% if not forloop.last %}, {% endif %}{% endfor %}]
+                },
+                {
+                    label: 'Ganancia',
+                    backgroundColor: '#198754',
+                    data: [{% for m in resumen_mensual %}{{ m.total_ganancia }}{% if not forloop.last %}, {% endif %}{% endfor %}]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                tooltip: {mode: 'index', intersect: false},
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

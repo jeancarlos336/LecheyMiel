@@ -47,7 +47,15 @@ class Producto(models.Model):
     precio = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        help_text="Precio del producto"
+        help_text="Precio de venta del producto"
+    )
+    # NUEVO CAMPO: Costo del producto
+    costo = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Costo del producto"
     )
     categoria = models.ForeignKey(
         Categoria,
@@ -83,7 +91,112 @@ class Producto(models.Model):
         """Devuelve el área de preparación del producto basado en su categoría"""
         return self.categoria.area_preparacion
     
+    @property
+    def ganancia_unitaria(self):
+        """Ganancia por unidad del producto"""
+        return self.precio - self.costo
+    
+    @property
+    def margen_porcentaje(self):
+        """Margen de ganancia en porcentaje"""
+        if self.costo > 0:
+            return ((self.precio - self.costo) / self.costo) * 100
+        return 0
+    
     class Meta:
         verbose_name = "Producto"
         verbose_name_plural = "Productos"
         ordering = ['categoria', 'nombre']
+
+
+class Stock(models.Model):
+    producto = models.OneToOneField(Producto, on_delete=models.CASCADE, related_name='stock')
+    cantidad_actual = models.IntegerField(default=0, help_text="Cantidad en inventario")
+    stock_minimo = models.IntegerField(default=5, help_text="Cantidad mínima para alertas")
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    @property
+    def tiene_stock(self):
+        return self.cantidad_actual > 0
+    
+    @property
+    def necesita_reposicion(self):
+        return self.cantidad_actual <= self.stock_minimo
+    
+    @property
+    def estado_stock(self):
+        if self.cantidad_actual == 0:
+            return "sin_stock"
+        elif self.necesita_reposicion:
+            return "stock_bajo"
+        else:
+            return "stock_ok"
+    
+    def agregar_stock(self, cantidad, motivo=""):
+        """Agrega stock al producto"""
+        if cantidad > 0:
+            self.cantidad_actual += cantidad
+            self.save()
+            
+            # Crear registro de movimiento
+            MovimientoStock.objects.create(
+                producto=self.producto,
+                tipo='entrada',
+                cantidad=cantidad,
+                motivo=motivo or "Entrada manual de stock"
+            )
+            return True
+        return False
+    
+    def descontar_stock(self, cantidad, motivo=""):
+        """Descuenta stock del producto"""
+        if self.cantidad_actual >= cantidad:
+            self.cantidad_actual -= cantidad
+            self.save()
+            
+            # Crear registro de movimiento
+            MovimientoStock.objects.create(
+                producto=self.producto,
+                tipo='salida',
+                cantidad=cantidad,
+                motivo=motivo or "Venta"
+            )
+            return True
+        return False
+    
+    def puede_vender(self, cantidad):
+        """Verifica si hay suficiente stock para vender"""
+        return self.cantidad_actual >= cantidad
+    
+    def __str__(self):
+        return f"{self.producto.nombre}: {self.cantidad_actual} unidades"
+    
+    class Meta:
+        verbose_name = "Stock"
+        verbose_name_plural = "Stocks"
+        ordering = ['producto__nombre']
+
+class MovimientoStock(models.Model):
+    TIPO_MOVIMIENTO = [
+        ('entrada', 'Entrada'),
+        ('salida', 'Salida'),
+        ('ajuste', 'Ajuste'),
+    ]
+    
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='movimientos')
+    tipo = models.CharField(max_length=10, choices=TIPO_MOVIMIENTO)
+    cantidad = models.IntegerField()
+    fecha = models.DateTimeField(auto_now_add=True)
+    motivo = models.CharField(max_length=200, help_text="Razón del movimiento")
+    referencia = models.CharField(max_length=100, blank=True, null=True, 
+                                help_text="ID de pedido, compra o referencia")
+    usuario = models.ForeignKey('users.Usuario', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    def __str__(self):
+        tipo_display = dict(self.TIPO_MOVIMIENTO)[self.tipo]
+        return f"{tipo_display}: {self.cantidad} - {self.producto.nombre}"
+    
+    class Meta:
+        verbose_name = "Movimiento de Stock"
+        verbose_name_plural = "Movimientos de Stock"
+        ordering = ['-fecha']

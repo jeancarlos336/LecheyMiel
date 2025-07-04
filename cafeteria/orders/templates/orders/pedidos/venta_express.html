@@ -384,9 +384,70 @@
         display: inline-block;
         margin-top: 3px;
     }
+    .stock-info {
+    margin-top: 4px;
+    font-size: 0.85em;
+    }
+
+    .stock-warning {
+        color: #dc3545;
+        font-weight: 500;
+    }
+
+    .stock-ok {
+        color: #28a745;
+        font-weight: 500;
+    }
+
+    .btn-sin-stock {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .producto-item[data-tiene-stock="false"] {
+        opacity: 0.7;
+        background-color: #f8f9fa;
+    }
+
+    .producto-sin-stock {
+        opacity: 0.6;
+        background-color: #f8f9fa !important;
+        cursor: not-allowed !important;
+    }
+    
+    .producto-sin-stock:hover {
+        transform: none !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+        border-color: #e0e0e0 !important;
+    }
+    
+    .btn-sin-stock {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
+        cursor: not-allowed !important;
+    }
+    
+    .btn-sin-stock:hover {
+        background-color: #6c757d !important;
+        transform: none !important;
+    }
+    
+    .stock-info {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
+    
+    .stock-warning {
+        color: #dc3545;
+        font-weight: 500;
+    }
+    
+    .stock-ok {
+        color: #28a745;
+    }
 </style>
 {% endblock %}
-
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-4">
@@ -432,16 +493,40 @@
                     <!-- Listado de productos -->
                     <div class="productos-container" id="productos-lista">
                         {% for producto in productos %}
-                        <div class="producto-item animate-fadeIn" data-id="{{ producto.id }}" data-nombre="{{ producto.nombre }}" data-precio="{{ producto.precio }}" data-categoria="{{ producto.categoria.id }}">
+                        <!-- CAMBIO 2: Modificar la estructura del producto para incluir información de stock -->
+                        <div class="producto-item animate-fadeIn" data-id="{{ producto.id }}" data-nombre="{{ producto.nombre }}" data-precio="{{ producto.precio }}" data-categoria="{{ producto.categoria.id }}" data-stock="{{ producto.stock.cantidad_actual|default:'999' }}" data-tiene-stock="{% if producto.stock and producto.stock.cantidad_actual <= 0 %}false{% else %}true{% endif %}">
                             <div>
                                 <span class="producto-nombre">{{ producto.nombre }}</span>
                                 <span class="categoria-badge">{{ producto.categoria.nombre }}</span>
+                                {% if producto.stock %}
+                                <div class="stock-info">
+                                    {% if producto.stock.cantidad_actual <= 0 %}
+                                    <span class="stock-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> Sin stock
+                                    </span>
+                                    {% elif producto.stock.cantidad_actual <= 5 %}
+                                    <span class="stock-warning">
+                                        <i class="fas fa-exclamation-circle"></i> Stock bajo: {{ producto.stock.cantidad_actual }}
+                                    </span>
+                                    {% else %}
+                                    <span class="stock-ok">
+                                        <i class="fas fa-check-circle"></i> Stock: {{ producto.stock.cantidad_actual }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                             </div>
                             <div class="d-flex align-items-center">
                                 <span class="producto-precio me-3">${{ producto.precio }}</span>
+                                {% if producto.stock and producto.stock.cantidad_actual <= 0 %}
+                                <button class="btn btn-secondary btn-sin-stock" disabled title="Sin stock disponible">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% else %}
                                 <button class="btn btn-primary agregar-producto" data-id="{{ producto.id }}" title="Agregar al carrito">
                                     <i class="fas fa-plus"></i>
                                 </button>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -614,6 +699,7 @@ $(document).ready(function() {
     function actualizarCarrito() {
         let $carritoItems = $('#carrito-items');
         $carritoItems.empty();
+        
         if (Object.keys(carrito).length === 0) {
             $carritoItems.append(`
                 <div class="text-center text-muted py-4" id="carrito-vacio">
@@ -653,19 +739,24 @@ $(document).ready(function() {
 
         $('#carrito-total').text('$' + totalCarrito.toFixed(2));
         calcularCambio();
+        
+        // Actualizar monto recibido si es menor que el total
         let montoActual = parseFloat($('#monto-recibido').val()) || 0;
         if (montoActual < totalCarrito) {
             $('#monto-recibido').val(totalCarrito.toFixed(2));
             calcularCambio();
         }
+        
         sessionStorage.setItem('carrito', JSON.stringify(carrito));
     }
 
+    // Event handlers para el carrito
     $(document).on('click', '.agregar-producto', function() {
         let id = $(this).data('id');
         let $productoItem = $(this).closest('.producto-item');
         let nombre = $productoItem.data('nombre');
         let precio = parseFloat($productoItem.data('precio'));
+        
         if (carrito[id]) {
             carrito[id].cantidad += 1;
             showToast(`Se aumentó la cantidad de ${nombre} en el carrito`);
@@ -711,53 +802,27 @@ $(document).ready(function() {
         }
     });
 
-    // CÓDIGO ACTUALIZADO - Selección de categorías
-    $('.categoria-btn').click(function() {
+    // Selección de categorías
+    $(document).on('click', '.categoria-btn', function() {
         let categoriaId = $(this).data('categoria');
         $('.categoria-btn').removeClass('active');
         $(this).addClass('active');
         
-        // Limpiar el campo de búsqueda para evitar conflictos
+        // Limpiar el campo de búsqueda
         $('#search-input').val('');
         
-        // Siempre hacer petición AJAX, incluso para "todas"
+        // Hacer petición AJAX para obtener productos
         $.ajax({
             url: "{% url 'orders:buscar_producto_express' %}",
             data: {
                 categoria: categoriaId !== 'todas' ? categoriaId : '',
-                q: '' // Consulta vacía para traer todos los productos
+                q: ''
             },
             beforeSend: function() {
                 $('#productos-lista').html('<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando productos...</p></div>');
             },
             success: function(data) {
-                let $productosLista = $('#productos-lista');
-                $productosLista.empty();
-                if (data.productos.length === 0) {
-                    $productosLista.html(`
-                        <div class="no-products">
-                            <i class="fas fa-box-open"></i>
-                            <p>No hay productos en esta categoría.</p>
-                        </div>
-                    `);
-                    return;
-                }
-                data.productos.forEach(function(producto) {
-                    $productosLista.append(`
-                        <div class="producto-item animate-fadeIn" data-id="${producto.id}" data-nombre="${producto.nombre}" data-precio="${producto.precio}" data-categoria="${producto.categoria_id}">
-                            <div>
-                                <span class="producto-nombre">${producto.nombre}</span>
-                                <span class="categoria-badge">${producto.categoria__nombre}</span>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <span class="producto-precio me-3">$${producto.precio}</span>
-                                <button class="btn btn-primary agregar-producto" data-id="${producto.id}" title="Agregar al carrito">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `);
-                });
+                renderizarProductos(data.productos);
             },
             error: function() {
                 $('#productos-lista').html(`
@@ -770,16 +835,16 @@ $(document).ready(function() {
         });
     });
 
+    // Búsqueda de productos
     $('#search-input').on('input', function() {
         buscarProductos();
     });
 
-    // CÓDIGO ACTUALIZADO - Búsqueda de productos
     function buscarProductos() {
         let query = $('#search-input').val().toLowerCase();
         let categoriaId = $('.categoria-btn.active').data('categoria');
         
-        // No realizar llamada AJAX si no hay texto de búsqueda y no está seleccionada una categoría específica
+        // Si no hay búsqueda y la categoría es "todas", mostrar todos los productos
         if (query.trim() === '' && categoriaId === 'todas') {
             $('.producto-item').show();
             return;
@@ -795,33 +860,7 @@ $(document).ready(function() {
                 $('#productos-lista').html('<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Buscando productos...</p></div>');
             },
             success: function(data) {
-                let $productosLista = $('#productos-lista');
-                $productosLista.empty();
-                if (data.productos.length === 0) {
-                    $productosLista.html(`
-                        <div class="no-products">
-                            <i class="fas fa-search"></i>
-                            <p>No se encontraron productos que coincidan con la búsqueda.</p>
-                        </div>
-                    `);
-                    return;
-                }
-                data.productos.forEach(function(producto) {
-                    $productosLista.append(`
-                        <div class="producto-item animate-fadeIn" data-id="${producto.id}" data-nombre="${producto.nombre}" data-precio="${producto.precio}" data-categoria="${producto.categoria_id}">
-                            <div>
-                                <span class="producto-nombre">${producto.nombre}</span>
-                                <span class="categoria-badge">${producto.categoria__nombre}</span>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <span class="producto-precio me-3">$${producto.precio}</span>
-                                <button class="btn btn-primary agregar-producto" data-id="${producto.id}" title="Agregar al carrito">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `);
-                });
+                renderizarProductos(data.productos);
             },
             error: function() {
                 $('#productos-lista').html(`
@@ -834,7 +873,62 @@ $(document).ready(function() {
         });
     }
 
-    // Mostrar/ocultar opciones de pago según estado seleccionado
+    function renderizarProductos(productos) {
+        let $productosLista = $('#productos-lista');
+        $productosLista.empty();
+        
+        if (productos.length === 0) {
+            $productosLista.html(`
+                <div class="no-products">
+                    <i class="fas fa-box-open"></i>
+                    <p>No se encontraron productos.</p>
+                </div>
+            `);
+            return;
+        }
+
+        productos.forEach(function(producto) {
+            let stockInfo = '';
+            let stockClass = '';
+            let botonHtml = '';
+            let dataStock = producto.stock_disponible || 999;
+            
+            if (producto.stock_disponible !== undefined && producto.stock_disponible !== null) {
+                if (producto.stock_disponible <= 0) {
+                    stockInfo = `<div class="stock-info"><span class="stock-warning"><i class="fas fa-exclamation-triangle"></i> Sin stock</span></div>`;
+                    stockClass = 'data-tiene-stock="false"';
+                    botonHtml = `<button class="btn btn-secondary btn-sin-stock" disabled title="Sin stock disponible"><i class="fas fa-times"></i></button>`;
+                } else if (producto.stock_disponible <= 5) {
+                    stockInfo = `<div class="stock-info"><span class="stock-warning"><i class="fas fa-exclamation-circle"></i> Stock bajo: ${producto.stock_disponible}</span></div>`;
+                    stockClass = 'data-tiene-stock="true"';
+                    botonHtml = `<button class="btn btn-primary agregar-producto" data-id="${producto.id}" title="Agregar al carrito"><i class="fas fa-plus"></i></button>`;
+                } else {
+                    stockInfo = `<div class="stock-info"><span class="stock-ok"><i class="fas fa-check-circle"></i> Stock: ${producto.stock_disponible}</span></div>`;
+                    stockClass = 'data-tiene-stock="true"';
+                    botonHtml = `<button class="btn btn-primary agregar-producto" data-id="${producto.id}" title="Agregar al carrito"><i class="fas fa-plus"></i></button>`;
+                }
+            } else {
+                stockClass = 'data-tiene-stock="true"';
+                botonHtml = `<button class="btn btn-primary agregar-producto" data-id="${producto.id}" title="Agregar al carrito"><i class="fas fa-plus"></i></button>`;
+            }
+            
+            $productosLista.append(`
+                <div class="producto-item animate-fadeIn" data-id="${producto.id}" data-nombre="${producto.nombre}" data-precio="${producto.precio}" data-categoria="${producto.categoria_id}" data-stock="${dataStock}" ${stockClass}>
+                    <div>
+                        <span class="producto-nombre">${producto.nombre}</span>
+                        <span class="categoria-badge">${producto.categoria__nombre}</span>
+                        ${stockInfo}
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="producto-precio me-3">$${producto.precio}</span>
+                        ${botonHtml}
+                    </div>
+                </div>
+            `);
+        });
+    }
+
+    // Opciones de pago
     $('input[name="estado_pago"]').change(function() {
         let estadoPago = $(this).val();
         
@@ -845,7 +939,6 @@ $(document).ready(function() {
         }
     });
 
-    // Mostrar/ocultar campos de efectivo según método de pago
     $('input[name="metodo_pago"]').change(function() {
         let metodoPago = $(this).val();
         
@@ -856,6 +949,7 @@ $(document).ready(function() {
         }
     });
 
+    // Cancelar venta
     $('#cancelar-venta').click(function() {
         if (confirm('¿Está seguro de cancelar la venta actual?')) {
             carrito = {};
@@ -867,16 +961,80 @@ $(document).ready(function() {
         }
     });
 
+    // Manejar envío del formulario
     $('#orden-form').submit(function(e) {
+        e.preventDefault();
+        
         if (Object.keys(carrito).length === 0) {
-            e.preventDefault();
             showToast('No hay productos en la orden. Agregue al menos un producto.', 'error');
             return false;
         }
-        sessionStorage.removeItem('carrito');
-        return true;
+        
+        console.log('DEBUG: Iniciando envío de formulario');
+        console.log('DEBUG: Carrito actual:', carrito);
+        
+        let formData = new FormData(this);
+        
+        // Limpiar items_carrito existentes
+        formData.delete('items_carrito');
+        
+        // Agregar items del carrito
+        for (let id in carrito) {
+            if (carrito.hasOwnProperty(id)) {
+                let item = carrito[id];
+                formData.append('items_carrito', `${id}:${item.cantidad}`);
+                console.log(`DEBUG: Agregando item: ${id}:${item.cantidad}`);
+            }
+        }
+        
+        // Mostrar loading
+        $('#finalizar-venta').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> Procesando...');
+        
+        // Enviar via AJAX
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                console.log('DEBUG: Respuesta exitosa:', response);
+                if (response.success) {
+                    sessionStorage.removeItem('carrito');
+                    showToast('Venta completada exitosamente', 'success');
+                    window.location.href = response.redirect_url;
+                } else {
+                    showToast(response.error || 'Error al procesar la venta', 'error');
+                    if (response.detalles) {
+                        console.log('DEBUG: Detalles del error:', response.detalles);
+                        response.detalles.forEach(detalle => {
+                            showToast(detalle, 'error');
+                        });
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log('DEBUG: Error AJAX:', xhr.responseText);
+                let errorMessage = 'Error al procesar la venta';
+                
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMessage = xhr.responseJSON.error;
+                }
+                
+                showToast(errorMessage, 'error');
+            },
+            complete: function() {
+                $('#finalizar-venta').prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Finalizar Venta');
+            }
+        });
+        
+        return false;
     });
 
+    // Cálculo de cambio
     $('#monto-recibido').on('input', function() {
         calcularCambio();
     });
@@ -884,6 +1042,7 @@ $(document).ready(function() {
     function calcularCambio() {
         let montoRecibido = parseFloat($('#monto-recibido').val()) || 0;
         let cambio = montoRecibido - totalCarrito;
+        
         if (cambio >= 0) {
             $('#cambio-monto').text('$' + cambio.toFixed(2));
             $('#cambio-monto').removeClass('text-danger').addClass('text-success');
@@ -895,6 +1054,14 @@ $(document).ready(function() {
         }
     }
 
+    // Función de debug
+    function debugCarrito() {
+        console.log('DEBUG: Estado actual del carrito:', carrito);
+        console.log('DEBUG: Carrito en sessionStorage:', sessionStorage.getItem('carrito'));
+        console.log('DEBUG: Items en el DOM:', $('#carrito-items').children().length);
+    }
+
+    // Inicializar carrito al cargar la página
     actualizarCarrito();
 });
 </script>

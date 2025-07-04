@@ -24,8 +24,8 @@ from django.views.decorators.http import require_http_methods
 import socket
 import logging
 from django.urls import reverse
-
-
+from django.db.models.functions import TruncMonth
+import calendar
 
 #trabajo con las mesas
 @login_required
@@ -115,7 +115,6 @@ def cambiar_estado_mesa(request, mesa_id):
     return render(request, 'orders/mesas/cambiar_estado_mesa.html', {'mesa': mesa})
 
 #pedidos
-
 @login_required
 def tomar_pedido(request, mesa_id):
     mesa = get_object_or_404(Mesa, id=mesa_id)
@@ -172,8 +171,6 @@ def tomar_pedido(request, mesa_id):
 
             action = request.POST.get('action')
             
-            # Agregar esta parte al final de tu acción 'add_producto' en tomar_pedido:
-
             if action == 'add_producto':
                 # Procesar detalle del pedido
                 producto_id = request.POST.get('producto_id')
@@ -181,53 +178,109 @@ def tomar_pedido(request, mesa_id):
                 notas = request.POST.get('notas', '')
                 producto = get_object_or_404(Producto, id=producto_id)
 
-                # Verificar si el producto ya existe en el pedido
-                detalle_existente = DetallePedido.objects.filter(
-                    pedido=pedido_existente,
-                    producto=producto,
-                    notas=notas,
-                    estado='pendiente'
-                ).first()
+                # VERIFICAR STOCK ANTES DE PROCEDER
+                try:
+                    stock_producto = getattr(producto, 'stock', None)
+                    if stock_producto and not stock_producto.puede_vender(cantidad):
+                        error_msg = f"Stock insuficiente para {producto.nombre}. Stock disponible: {stock_producto.cantidad_actual}"
+                        
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            return JsonResponse({
+                                'success': False,
+                                'error': error_msg
+                            }, status=400)
+                        
+                        messages.error(request, error_msg)
+                        return redirect('orders:tomar_pedido', mesa_id=mesa.id)
 
-                if detalle_existente:
-                    # Si ya existe, actualizar la cantidad
-                    detalle_existente.cantidad += cantidad
-                    detalle_existente.save()
-                    nuevo_detalle = detalle_existente
-                else:
-                    # Si no existe, crear nuevo detalle
-                    nuevo_detalle = DetallePedido.objects.create(
+                    # Verificar si el producto ya existe en el pedido
+                    detalle_existente = DetallePedido.objects.filter(
                         pedido=pedido_existente,
                         producto=producto,
-                        cantidad=cantidad,
-                        precio_unitario=producto.precio,
                         notas=notas,
                         estado='pendiente'
-                    )
+                    ).first()
 
-                # NUEVA LÓGICA: Si el producto NO es de cocina, marcarlo automáticamente como entregado
-                if producto.categoria.area_preparacion.nombre != AreaPreparacion.COCINA:
-                    nuevo_detalle.estado = 'entregado'
-                    nuevo_detalle.hora_listo = timezone.now()
-                    nuevo_detalle.hora_entrega = timezone.now()
-                    nuevo_detalle.save()
+                    if detalle_existente:
+                        # Verificar stock para la nueva cantidad total
+                        nueva_cantidad_total = detalle_existente.cantidad + cantidad
+                        if stock_producto and not stock_producto.puede_vender(cantidad):
+                            error_msg = f"Stock insuficiente para {producto.nombre}. Stock disponible: {stock_producto.cantidad_actual}"
+                            
+                            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                                return JsonResponse({
+                                    'success': False,
+                                    'error': error_msg
+                                }, status=400)
+                            
+                            messages.error(request, error_msg)
+                            return redirect('orders:tomar_pedido', mesa_id=mesa.id)
+                        
+                        # Si ya existe, actualizar la cantidad
+                        detalle_existente.cantidad += cantidad
+                        detalle_existente.save()
+                        nuevo_detalle = detalle_existente
+                    else:
+                        # Si no existe, crear nuevo detalle
+                        nuevo_detalle = DetallePedido.objects.create(
+                            pedido=pedido_existente,
+                            producto=producto,
+                            cantidad=cantidad,
+                            precio_unitario=producto.precio,
+                            notas=notas,
+                            estado='pendiente'
+                        )
 
-                pedido_existente.calcular_total()
+                    # NUEVA LÓGICA: Si el producto NO es de cocina, marcarlo automáticamente como entregado
+                    if producto.categoria.area_preparacion.nombre != AreaPreparacion.COCINA:
+                        nuevo_detalle.estado = 'entregado'
+                        nuevo_detalle.hora_listo = timezone.now()
+                        nuevo_detalle.hora_entrega = timezone.now()
+                        nuevo_detalle.save()
+
+                    pedido_existente.calcular_total()
+                    
+                    mensaje_estado = ""
+                    if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
+                        mensaje_estado = "agregado al pedido (requiere preparación en cocina)"
+                    else:
+                        mensaje_estado = "agregado y marcado como entregado automáticamente"
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Producto {producto.nombre} {mensaje_estado}.',
+                            'es_cocina': producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA
+                        })
+                    messages.success(request, f'Producto {producto.nombre} {mensaje_estado}.')
+                    return redirect('orders:tomar_pedido', mesa_id=mesa.id)
+
+                except ValueError as e:
+                    # Capturar cualquier error de stock que pueda escapar
+                    error_msg = str(e)
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False,
+                            'error': error_msg
+                        }, status=400)
+                    
+                    messages.error(request, error_msg)
+                    return redirect('orders:tomar_pedido', mesa_id=mesa.id)
                 
-                mensaje_estado = ""
-                if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
-                    mensaje_estado = "agregado al pedido (requiere preparación en cocina)"
-                else:
-                    mensaje_estado = "agregado y marcado como entregado automáticamente"
-                
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'message': f'Producto {producto.nombre} {mensaje_estado}.',
-                        'es_cocina': producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA
-                    })
-                messages.success(request, f'Producto {producto.nombre} {mensaje_estado}.')
-                return redirect('orders:tomar_pedido', mesa_id=mesa.id)                
+                except Exception as e:
+                    # Capturar cualquier otro error inesperado
+                    error_msg = f"Error al agregar el producto: {str(e)}"
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False,
+                            'error': error_msg
+                        }, status=500)
+                    
+                    messages.error(request, error_msg)
+                    return redirect('orders:tomar_pedido', mesa_id=mesa.id)
+                    
             elif action == 'remove_producto':
                 detalle_id = request.POST.get('detalle_id')
                 try:
@@ -261,9 +314,9 @@ def tomar_pedido(request, mesa_id):
                     pedido_existente.save()
                     return HttpResponse(status=200)
             
-            elif action == 'update_note':  # Cambiar de 'update_nota' a 'update_note'
+            elif action == 'update_note':
                 detalle_id = request.POST.get('detalle_id')
-                notas = request.POST.get('notas', '')  # Cambiar 'nota' por 'notas'
+                notas = request.POST.get('notas', '')
                 try:
                     detalle = DetallePedido.objects.get(
                         id=detalle_id,
@@ -296,6 +349,22 @@ def tomar_pedido(request, mesa_id):
                         id=detalle_id,
                         pedido=pedido_existente
                     )
+                    
+                    # Verificar stock antes de actualizar cantidad
+                    producto = detalle.producto
+                    stock_producto = getattr(producto, 'stock', None)
+                    
+                    if stock_producto:
+                        cantidad_actual = detalle.cantidad
+                        diferencia = cantidad - cantidad_actual
+                        
+                        if diferencia > 0:  # Aumentar cantidad
+                            if not stock_producto.puede_vender(diferencia):
+                                return JsonResponse({
+                                    'success': False,
+                                    'error': f'Stock insuficiente para {producto.nombre}. Stock disponible: {stock_producto.cantidad_actual}'
+                                }, status=400)
+                    
                     detalle.cantidad = cantidad
                     detalle.save()
                     pedido_existente.calcular_total()
@@ -305,11 +374,17 @@ def tomar_pedido(request, mesa_id):
                         'subtotal': detalle.subtotal,
                         'total': pedido_existente.monto_total
                     })
+                    
                 except DetallePedido.DoesNotExist:
                     return JsonResponse({
                         'success': False,
                         'error': 'No se encontró el detalle del pedido'
                     }, status=404)
+                except ValueError as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': str(e)
+                    }, status=400)
 
     # Manejar parámetro de categoría activa
     categoria_activa = request.GET.get('categoria')
@@ -1449,7 +1524,6 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
 #####################
 
 #VENTA EXPRESS
-
 class VentaExpressView(LoginRequiredMixin, View):
     """Vista para la venta express"""
     template_name = 'orders/pedidos/venta_express.html'
@@ -1471,7 +1545,6 @@ class VentaExpressView(LoginRequiredMixin, View):
         tipo_orden_express = TipoOrden.objects.get(codigo='EXPRESS')
         
         # Fecha actual para mostrar en la interfaz
-
         today = date.today()
         
         context = {
@@ -1505,122 +1578,329 @@ class BuscarProductoExpressView(LoginRequiredMixin, View):
                 Q(descripcion__icontains=query)
             )
         
-        # Obtener datos necesarios
-        productos_data = productos.values(
-            'id', 'nombre', 'precio', 'categoria_id', 'categoria__nombre'
-        )[:20]  # Limitar a 20 resultados para mejor rendimiento
+        # Obtener datos necesarios incluyendo información de stock
+        productos_data = []
+        for producto in productos[:20]:  # Limitar a 20 resultados para mejor rendimiento
+            stock_producto = getattr(producto, 'stock', None)
+            stock_disponible = stock_producto.cantidad_actual if stock_producto else 0
+            
+            productos_data.append({
+                'id': producto.id,
+                'nombre': producto.nombre,
+                'precio': producto.precio,
+                'categoria_id': producto.categoria_id,
+                'categoria__nombre': producto.categoria.nombre,
+                'stock_disponible': stock_disponible,
+                'tiene_stock': stock_disponible > 0 if stock_producto else True
+            })
         
         return JsonResponse({
-            'productos': list(productos_data)
+            'productos': productos_data
         })
 
 class CrearPedidoExpressView(LoginRequiredMixin, View):
     """Vista para procesar la creación de un pedido express"""
     
     def post(self, request):
-        # Obtener datos del formulario
-        tipo_orden_id = request.POST.get('tipo_orden')
-        estado_pago = request.POST.get('estado_pago', 'pendiente')
-        nombre_cliente = request.POST.get('nombre_cliente', '')
-        
-        # Lista de productos del carrito (formato: id_producto:cantidad)
-        items_carrito = request.POST.getlist('items_carrito')
-        
-        # Crear el pedido
-        tipo_orden = get_object_or_404(TipoOrden, id=tipo_orden_id)
-        
-        pedido = Pedido(
-            tipo_orden=tipo_orden,
-            mesero=request.user,  # Asumiendo que el usuario conectado es quien registra
-            estado='pendiente',
-            monto_total=0,  # Se actualizará después
-            estado_pago=estado_pago,
-            nombre_cliente=nombre_cliente
-        )
-        pedido.save()  # Guardar para generar número automático
-        
-        # Crear detalles del pedido
-        detalles = []
-        for item in items_carrito:
-            try:
-                producto_id, cantidad = item.split(':')
-                producto = Producto.objects.get(id=producto_id)
+        try:
+            # Obtener datos del formulario
+            tipo_orden_id = request.POST.get('tipo_orden')
+            estado_pago = request.POST.get('estado_pago', 'pendiente')
+            nombre_cliente = request.POST.get('nombre_cliente', '')
+            
+            # Lista de productos del carrito (formato: id_producto:cantidad)
+            items_carrito = request.POST.getlist('items_carrito')
+            
+            # DEBUG: Agregar logging para ver qué se está recibiendo
+            print(f"DEBUG: items_carrito recibidos: {items_carrito}")
+            
+            # VALIDAR STOCK ANTES DE CREAR EL PEDIDO
+            productos_sin_stock = []
+            items_validados = []
+            
+            for item in items_carrito:
+                try:
+                    # Validar formato del item
+                    if ':' not in item:
+                        print(f"DEBUG: Item mal formateado: {item}")
+                        continue
+                        
+                    producto_id, cantidad = item.split(':')
+                    producto_id = int(producto_id.strip())
+                    cantidad = int(cantidad.strip())
+                    
+                    # Verificar que el producto existe
+                    try:
+                        producto = Producto.objects.get(id=producto_id)
+                    except Producto.DoesNotExist:
+                        print(f"DEBUG: Producto no encontrado: {producto_id}")
+                        continue
+                    
+                    print(f"DEBUG: Procesando producto: {producto.nombre}, cantidad: {cantidad}")
+                    
+                    # Verificar stock solo si el producto tiene control de stock
+                    stock_producto = getattr(producto, 'stock', None)
+                    
+                    if stock_producto:
+                        # Producto con control de stock
+                        print(f"DEBUG: Stock disponible para {producto.nombre}: {stock_producto.cantidad_actual}")
+                        
+                        if stock_producto.cantidad_actual < cantidad:
+                            productos_sin_stock.append({
+                                'nombre': producto.nombre,
+                                'solicitado': cantidad,
+                                'disponible': stock_producto.cantidad_actual
+                            })
+                            print(f"DEBUG: Stock insuficiente para {producto.nombre}")
+                        else:
+                            items_validados.append({
+                                'producto': producto,
+                                'cantidad': cantidad
+                            })
+                            print(f"DEBUG: Stock suficiente para {producto.nombre}")
+                    else:
+                        # Producto sin control de stock - siempre válido
+                        items_validados.append({
+                            'producto': producto,
+                            'cantidad': cantidad
+                        })
+                        print(f"DEBUG: Producto sin control de stock: {producto.nombre}")
+                        
+                except (ValueError, TypeError) as e:
+                    print(f"DEBUG: Error al procesar item {item}: {e}")
+                    continue
+            
+            print(f"DEBUG: Items validados: {len(items_validados)}")
+            print(f"DEBUG: Productos sin stock: {len(productos_sin_stock)}")
+            
+            # Si hay productos sin stock, devolver error
+            if productos_sin_stock:
+                error_messages = []
+                for item in productos_sin_stock:
+                    error_messages.append(
+                        f"{item['nombre']}: solicitado {item['solicitado']}, disponible {item['disponible']}"
+                    )
                 
-                # Determinar el estado inicial del detalle del pedido
-                estado_detalle = 'listo'
+                # Si es una petición AJAX, devolver JSON
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Stock insuficiente',
+                        'detalles': error_messages
+                    }, status=400)
                 
-                detalle = DetallePedido.objects.create(
-                    pedido=pedido,
-                    producto=producto,
-                    cantidad=int(cantidad),
-                    precio_unitario=producto.precio,
-                    estado=estado_detalle
+                # Si es una petición normal, mostrar mensaje y redirigir
+                messages.error(request, f"Stock insuficiente para: {', '.join(error_messages)}")
+                return redirect('orders:venta_express')
+            
+            # Si no hay items válidos, mostrar error
+            if not items_validados:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'No hay productos válidos en el carrito'
+                    }, status=400)
+                
+                messages.error(request, "No hay productos válidos en el carrito")
+                return redirect('orders:venta_express')
+            
+            # Crear el pedido dentro de una transacción
+            with transaction.atomic():
+                tipo_orden = get_object_or_404(TipoOrden, id=tipo_orden_id)
+                
+                pedido = Pedido(
+                    tipo_orden=tipo_orden,
+                    mesero=request.user,
+                    estado='pendiente',
+                    monto_total=0,
+                    estado_pago=estado_pago,
+                    nombre_cliente=nombre_cliente
                 )
-                detalles.append(detalle)
-            except Exception as e:
-                # Manejar errores al procesar items
-                continue
-        
-        # Calcular el total del pedido
-        pedido.calcular_total()
-        
-        # Procesar según el estado de pago
-        if estado_pago == 'pagado':
-            metodo_pago = request.POST.get('metodo_pago', 'efectivo')
-            monto_recibido = request.POST.get('monto_recibido', None)
+                pedido.save()  # Guardar para generar número automático
+                
+                print(f"DEBUG: Pedido creado con ID: {pedido.id}")
+                
+                # Crear detalles del pedido
+                detalles = []
+                for item in items_validados:
+                    try:
+                        producto = item['producto']
+                        cantidad = item['cantidad']
+                        
+                        print(f"DEBUG: Creando detalle para {producto.nombre}")
+                        
+                        # Determinar el estado inicial del detalle del pedido
+                        estado_detalle = 'listo'
+                        
+                        detalle = DetallePedido.objects.create(
+                            pedido=pedido,
+                            producto=producto,
+                            cantidad=cantidad,
+                            precio_unitario=producto.precio,
+                            estado=estado_detalle
+                        )
+                        detalles.append(detalle)
+                        
+                        # Actualizar stock si el producto tiene control de stock
+                        stock_producto = getattr(producto, 'stock', None)
+                        if stock_producto:
+                            stock_producto.cantidad_actual -= cantidad
+                            stock_producto.save()
+                            print(f"DEBUG: Stock actualizado para {producto.nombre}. Nuevo stock: {stock_producto.cantidad_actual}")
+                        
+                    except Exception as e:
+                        print(f"DEBUG: Error al procesar item {producto.nombre}: {e}")
+                        raise Exception(f"Error al procesar {producto.nombre}: {str(e)}")
+                
+                # Calcular el total del pedido
+                pedido.calcular_total()
+                
+                print(f"DEBUG: Total del pedido: {pedido.monto_total}")
+                
+                # Procesar según el estado de pago
+                if estado_pago == 'pagado':
+                    metodo_pago = request.POST.get('metodo_pago', 'efectivo')
+                    monto_recibido = request.POST.get('monto_recibido', None)
+                    
+                    pago = Pago(
+                        pedido=pedido,
+                        monto=pedido.monto_total,
+                        metodo=metodo_pago,
+                        fecha=timezone.now()
+                    )
+                    
+                    if metodo_pago == 'efectivo' and monto_recibido:
+                        monto_recibido = Decimal(monto_recibido)
+                        pago.monto_recibido = monto_recibido
+                        pago.cambio = monto_recibido - pedido.monto_total if monto_recibido > pedido.monto_total else 0
+                    
+                    pago.save()
+                    
+                    # Actualizar el pedido para reflejar quién lo cobró
+                    pedido.cajero = request.user
+                    pedido.estado = 'completado'
+                    pedido.save()
+                    
+                elif estado_pago == 'pendiente':
+                    # Crear registro de pago pendiente
+                    metodo_pago = 'pendiente'
+                    cliente_nombre = request.POST.get('nombre_cliente', '')
+                    FECHA_PROMESA_DEFAULT = '2060-12-31'
+                    fecha_promesa = request.POST.get('fecha_promesa', FECHA_PROMESA_DEFAULT)
+                    notas_adicionales = request.POST.get('notas_adicionales', 'compromiso de pago')
+                    
+                    # Crear el pago básico
+                    pago = Pago(
+                        pedido=pedido,
+                        monto=pedido.monto_total,
+                        metodo=metodo_pago,
+                        notas="Pago pendiente",
+                        fecha=timezone.now()
+                    )
+                    pago.save()
+                    
+                    # Crear registro en PagoPendiente
+                    PagoPendiente.objects.create(
+                        pago=pago,
+                        cliente_nombre=cliente_nombre,
+                        fecha_promesa=fecha_promesa,
+                        notas_adicionales=notas_adicionales
+                    )
+                    
+                    # Actualizar estado del pedido
+                    pedido.estado_pago = 'impago'
+                    pedido.estado = 'completado'
+                    pedido.save()
+                
+                print(f"DEBUG: Pedido completado exitosamente")
+                
+                # Si es una petición AJAX, devolver éxito
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'pedido_id': pedido.id,
+                        'redirect_url': reverse('orders:recibo_venta_express', kwargs={'pedido_id': pedido.id})
+                    })
+                
+                # Redireccionar a la vista de recibo
+                return redirect('orders:recibo_venta_express', pedido_id=pedido.id)
+                
+        except Exception as e:
+            # Manejar cualquier error inesperado
+            error_msg = f"Error al crear el pedido: {str(e)}"
+            print(f"DEBUG: Error inesperado: {error_msg}")
             
-            pago = Pago(
-                pedido=pedido,
-                monto=pedido.monto_total,
-                metodo=metodo_pago,
-                fecha=timezone.now()
-            )
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'error': error_msg
+                }, status=500)
             
-            if metodo_pago == 'efectivo' and monto_recibido:
-                monto_recibido = Decimal(monto_recibido)
-                pago.monto_recibido = monto_recibido
-                pago.cambio = monto_recibido - pedido.monto_total if monto_recibido > pedido.monto_total else 0
+            messages.error(request, error_msg)
+            return redirect('orders:venta_express')
+
+
+# VISTA ADICIONAL: Para verificar stock en tiempo real via AJAX
+class VerificarStockExpressView(LoginRequiredMixin, View):
+    """Vista para verificar stock de productos en tiempo real"""
+    
+    def post(self, request):
+        try:
+            items_carrito = request.POST.getlist('items_carrito')
             
-            pago.save()
+            productos_sin_stock = []
+            stock_info = []
             
-            # Actualizar el pedido para reflejar quién lo cobró
-            pedido.cajero = request.user
-            pedido.estado = 'completado'
-            pedido.save()
+            for item in items_carrito:
+                try:
+                    producto_id, cantidad = item.split(':')
+                    producto = Producto.objects.get(id=producto_id)
+                    cantidad = int(cantidad)
+                    
+                    stock_producto = getattr(producto, 'stock', None)
+                    if stock_producto:
+                        stock_disponible = stock_producto.cantidad_actual
+                        tiene_stock = stock_producto.puede_vender(cantidad)
+                        
+                        stock_info.append({
+                            'producto_id': producto.id,
+                            'nombre': producto.nombre,
+                            'cantidad_solicitada': cantidad,
+                            'stock_disponible': stock_disponible,
+                            'tiene_stock': tiene_stock
+                        })
+                        
+                        if not tiene_stock:
+                            productos_sin_stock.append({
+                                'nombre': producto.nombre,
+                                'solicitado': cantidad,
+                                'disponible': stock_disponible
+                            })
+                    else:
+                        # Producto sin control de stock
+                        stock_info.append({
+                            'producto_id': producto.id,
+                            'nombre': producto.nombre,
+                            'cantidad_solicitada': cantidad,
+                            'stock_disponible': 'Sin control',
+                            'tiene_stock': True
+                        })
+                        
+                except (ValueError, Producto.DoesNotExist):
+                    continue
             
-        elif estado_pago == 'pendiente':
-            # Crear registro de pago pendiente
-            metodo_pago = 'pendiente'
-            cliente_nombre = request.POST.get('nombre_cliente', '')
-            FECHA_PROMESA_DEFAULT = '2060-12-31'
-            fecha_promesa = request.POST.get('fecha_promesa', FECHA_PROMESA_DEFAULT)
-            notas_adicionales = request.POST.get('notas_adicionales', 'compromiso de pago')
+            return JsonResponse({
+                'success': True,
+                'tiene_stock_suficiente': len(productos_sin_stock) == 0,
+                'productos_sin_stock': productos_sin_stock,
+                'stock_info': stock_info
+            })
             
-            # Crear el pago básico
-            pago = Pago(
-                pedido=pedido,
-                monto=pedido.monto_total,
-                metodo=metodo_pago,
-                notas="Pago pendiente",
-                fecha=timezone.now()
-            )
-            pago.save()
-            
-            # Crear registro en PagoPendiente
-            PagoPendiente.objects.create(
-                pago=pago,
-                cliente_nombre=cliente_nombre,
-                fecha_promesa=fecha_promesa,
-                notas_adicionales=notas_adicionales
-            )
-            
-            # Actualizar estado del pedido
-            pedido.estado_pago = 'impago'
-            pedido.estado = 'completado'
-            pedido.save()
-        
-        # Redireccionar a la vista de recibo
-        return redirect('orders:recibo_venta_express', pedido_id=pedido.id)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
 
 
     
@@ -2298,8 +2578,6 @@ def generar_boleta_xprinter_a160h(pedido):
     
     
 ##############ELIMINA VENTA COMPLETA############################
-
-
 @login_required
 @require_http_methods(["POST"])
 def eliminar_venta_completa(request, pedido_id):
@@ -2325,9 +2603,22 @@ def eliminar_venta_completa(request, pedido_id):
             pagos_eliminados = pedido.pagos.count()
             pedido.pagos.all().delete()
             
-            # 3. Eliminar todos los DetallePedido
-            detalles_eliminados = pedido.detalles.count()
-            pedido.detalles.all().delete()
+            # 3. RESTAURAR STOCK: Eliminar todos los DetallePedido UNO POR UNO
+            # para que se ejecute el método delete() personalizado
+            detalles_eliminados = 0
+            stock_restaurado = []
+            
+            for detalle in pedido.detalles.all():
+                # Guardar info del stock que se va a restaurar
+                if detalle.estado != 'cancelado':
+                    stock_restaurado.append({
+                        'producto': detalle.producto.nombre,
+                        'cantidad': detalle.cantidad
+                    })
+                
+                # Eliminar individualmente para activar el método delete() personalizado
+                detalle.delete()  # Esto ejecutará nuestro método delete() que restaura el stock
+                detalles_eliminados += 1
             
             # 4. Liberar la mesa si existe (cambiar estado a Disponible)
             mesa_liberada = None
@@ -2343,12 +2634,21 @@ def eliminar_venta_completa(request, pedido_id):
                 'mesa': pedido.mesa.numero if pedido.mesa else 'Para llevar',
                 'cliente': pedido.nombre_cliente or 'Sin nombre',
                 'monto_total': pedido.monto_total,
-                'mesa_liberada': mesa_liberada.numero if mesa_liberada else None
+                'mesa_liberada': mesa_liberada.numero if mesa_liberada else None,
+                'stock_restaurado': stock_restaurado
             }
             pedido.delete()
         
         # Mensaje de éxito con detalles
         mensaje_mesa = f"\n- Mesa {pedido_info['mesa_liberada']} liberada y disponible" if pedido_info['mesa_liberada'] else ""
+        
+        # Mensaje de stock restaurado
+        mensaje_stock = ""
+        if stock_restaurado:
+            mensaje_stock = "\n- Stock restaurado:"
+            for item in stock_restaurado:
+                mensaje_stock += f"\n  • {item['producto']}: +{item['cantidad']} unidades"
+        
         mensaje = f"""
         Venta eliminada completamente:
         - Pedido #{pedido_info['id']} ({pedido_info['numero_orden'] or 'Sin número'})
@@ -2357,7 +2657,7 @@ def eliminar_venta_completa(request, pedido_id):
         - Monto: ${pedido_info['monto_total']}
         - Detalles eliminados: {detalles_eliminados}
         - Pagos eliminados: {pagos_eliminados}
-        - Pagos pendientes eliminados: {pagos_pendientes_eliminados}{mensaje_mesa}
+        - Pagos pendientes eliminados: {pagos_pendientes_eliminados}{mensaje_mesa}{mensaje_stock}
         """
         
         messages.success(request, mensaje)
@@ -2371,7 +2671,8 @@ def eliminar_venta_completa(request, pedido_id):
                 'detalles_eliminados': detalles_eliminados,
                 'pagos_eliminados': pagos_eliminados,
                 'pagos_pendientes_eliminados': pagos_pendientes_eliminados,
-                'mesa_liberada': pedido_info['mesa_liberada']
+                'mesa_liberada': pedido_info['mesa_liberada'],
+                'stock_restaurado': stock_restaurado
             })
         
         # Redireccionar a la lista de pedidos
@@ -2559,3 +2860,53 @@ def ranking_productos_data(request):
             'error_type': type(e).__name__,
             'debug': 'Ver logs del servidor para más detalles'
         }, status=500)
+        
+        
+##########INFORMES DE PAGOS
+
+
+
+def informe_pagos(request):
+    desde = hasta = None
+    resumen_mensual = []
+
+    if request.method == 'GET':
+        desde = request.GET.get('desde')
+        hasta = request.GET.get('hasta')
+
+        if desde and hasta:
+            try:
+                desde_dt = datetime.strptime(desde, "%Y-%m-%d")
+                hasta_dt = datetime.strptime(hasta, "%Y-%m-%d")
+
+                pagos = Pago.objects.filter(fecha__date__gte=desde_dt, fecha__date__lte=hasta_dt)
+
+                # Agrupar por mes
+                pagos_por_mes = (
+                    pagos
+                    .annotate(mes=TruncMonth('fecha'))
+                    .values('mes')
+                    .annotate(
+                        total_venta=Sum('total_venta'),
+                        total_costo=Sum('costo_total'),
+                        total_ganancia=Sum('ganancia')
+                    )
+                    .order_by('mes')
+                )
+
+                # Convertir a lista legible
+                for item in pagos_por_mes:
+                    resumen_mensual.append({
+                        'mes': item['mes'].strftime('%B %Y'),  # Ej: "Julio 2025"
+                        'total_venta': item['total_venta'] or 0,
+                        'total_costo': item['total_costo'] or 0,
+                        'total_ganancia': item['total_ganancia'] or 0,
+                    })
+            except Exception as e:
+                print(f"Error: {e}")
+
+    return render(request, 'orders/pedidos/informe_pagos.html', {
+        'resumen_mensual': resumen_mensual,
+        'desde': desde,
+        'hasta': hasta
+    })

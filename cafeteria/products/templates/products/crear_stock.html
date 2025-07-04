@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Crear Stock{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-plus mr-2"></i>Crear Nuevo Stock
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Información del Producto -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            {% if producto.imagen %}
+                            <img src="{{ producto.imagen.url }}" class="img-thumbnail" alt="{{ producto.nombre }}">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 100px;">
+                                <i class="fas fa-image fa-2x text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h4>{{ producto.nombre }}</h4>
+                            <p class="text-muted mb-1">Categoría: {{ producto.categoria.nombre }}</p>
+                            <p class="text-muted mb-1">Precio: ${{ producto.precio }}</p>
+                            <p class="mb-0">
+                                Estado: 
+                                {% if producto.esta_disponible %}
+                                    <span class="badge badge-success">Disponible</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">No disponible</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Información sobre crear stock -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle mr-2"></i>Crear Stock para Producto
+                        </h5>
+                        <p class="mb-0">
+                            Este producto no tiene un registro de stock asociado. 
+                            Cree uno para poder gestionar el inventario y realizar ventas.
+                        </p>
+                    </div>
+
+                    <!-- Formulario -->
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.cantidad_actual.id_for_label }}">
+                                        <i class="fas fa-boxes mr-1"></i>{{ form.cantidad_actual.label }}
+                                    </label>
+                                    {{ form.cantidad_actual }}
+                                    {% if form.cantidad_actual.help_text %}
+                                        <small class="form-text text-muted">{{ form.cantidad_actual.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in form.cantidad_actual.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.stock_minimo.id_for_label }}">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>{{ form.stock_minimo.label }}
+                                    </label>
+                                    {{ form.stock_minimo }}
+                                    {% if form.stock_minimo.help_text %}
+                                        <small class="form-text text-muted">{{ form.stock_minimo.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in form.stock_minimo.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campo para motivo -->
+                        <div class="form-group">
+                            <label for="motivo">
+                                <i class="fas fa-comment mr-1"></i>Motivo (Opcional)
+                            </label>
+                            <input type="text" class="form-control" id="motivo" name="motivo" 
+                                   placeholder="Ej: Stock inicial, Inventario nuevo, etc.">
+                            <small class="form-text text-muted">
+                                Describe el motivo de la creación de este stock (aparecerá en el historial de movimientos)
+                            </small>
+                        </div>
+
+                        <!-- Vista previa del estado -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-eye mr-1"></i>Vista Previa
+                                </h6>
+                                <div id="vista-previa">
+                                    <p class="mb-1"><strong>Cantidad Inicial:</strong> <span id="preview-cantidad">0</span> unidades</p>
+                                    <p class="mb-1"><strong>Stock Mínimo:</strong> <span id="preview-minimo">5</span> unidades</p>
+                                    <p class="mb-0"><strong>Estado Inicial:</strong> <span id="preview-estado" class="badge badge-secondary">Sin Stock</span></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus mr-2"></i>Crear Stock
+                            </button>
+                            <a href="{% url 'products:stock_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times mr-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cantidadInput = document.getElementById('{{ form.cantidad_actual.id_for_label }}');
+    const minimoInput = document.getElementById('{{ form.stock_minimo.id_for_label }}');
+    const previewCantidad = document.getElementById('preview-cantidad');
+    const previewMinimo = document.getElementById('preview-minimo');
+    const previewEstado = document.getElementById('preview-estado');
+    
+    function updatePreview() {
+        const cantidad = parseInt(cantidadInput.value) || 0;
+        const minimo = parseInt(minimoInput.value) || 5;
+        
+        previewCantidad.textContent = cantidad;
+        previewMinimo.textContent = minimo;
+        
+        // Actualizar estado
+        let estado, badgeClass;
+        if (cantidad === 0) {
+            estado = 'Sin Stock';
+            badgeClass = 'badge-danger';
+        } else if (cantidad <= minimo) {
+            estado = 'Stock Bajo';
+            badgeClass = 'badge-warning';
+        } else {
+            estado = 'Stock OK';
+            badgeClass = 'badge-success';
+        }
+        
+        previewEstado.textContent = estado;
+        previewEstado.className = `badge ${badgeClass}`;
+    }
+    
+    // Actualizar vista previa en tiempo real
+    cantidadInput.addEventListener('input', updatePreview);
+    minimoInput.addEventListener('input', updatePreview);
+    
+    // Actualizar vista previa inicial
+    updatePreview();
+    
+    // Validación del formulario
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const cantidad = parseInt(cantidadInput.value) || 0;
+        const minimo = parseInt(minimoInput.value) || 0;
+        
+        if (cantidad < 0) {
+            alert('La cantidad no puede ser negativa');
+            e.preventDefault();
+            return;
+        }
+        
+        if (minimo < 0) {
+            alert('El stock mínimo no puede ser negativo');
+            e.preventDefault();
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

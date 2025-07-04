@@ -5,7 +5,8 @@ from .views import (
     CrearPedidoExpressView,
     ReciboVentaExpressView,
     BuscarProductoExpressView,
-    GetTodasCategoriasView
+    GetTodasCategoriasView,
+    VerificarStockExpressView
 )
 
 app_name = 'orders'
@@ -59,6 +60,8 @@ urlpatterns = [
     path('venta-express/recibo/<int:pedido_id>/', ReciboVentaExpressView.as_view(), name='recibo_venta_express'),
     path('buscar-producto-express/', BuscarProductoExpressView.as_view(), name='buscar_producto_express'),
     path('get-todas-categorias/', GetTodasCategoriasView.as_view(), name='get_todas_categorias'),
+    path('verificar-stock-express/', VerificarStockExpressView.as_view(), name='verificar_stock_express'),
+    
     
     path('pedido/<int:pedido_id>/recibo-cocina/', views.recibo_cocina,name='recibo_cocina'),   
     path('pedido/<int:pedido_id>/imprimir-cocina/', views.imprimir_recibo_cocina,name='imprimir_recibo_cocina'),
@@ -80,4 +83,7 @@ urlpatterns = [
     
     path('ranking-productos/', views.ranking_productos_view, name='ranking_productos'),
     path('api/ranking-productos/', views.ranking_productos_data, name='ranking_productos_api'),
+    
+    path('informes/pagos/', views.informe_pagos, name='informe_pagos'),
+    
 ]

@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Agregar Stock - {{ producto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-plus mr-2"></i>Agregar Stock
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Información del Producto -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            {% if producto.imagen %}
+                            <img src="{{ producto.imagen.url }}" class="img-thumbnail" alt="{{ producto.nombre }}">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 100px;">
+                                <i class="fas fa-image fa-2x text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h4>{{ producto.nombre }}</h4>
+                            <p class="text-muted mb-1">Categoría: {{ producto.categoria.nombre }}</p>
+                            <p class="text-muted mb-1">Precio: ${{ producto.precio }}</p>
+                            <p class="mb-0">
+                                Estado: 
+                                {% if producto.esta_disponible %}
+                                    <span class="badge badge-success">Disponible</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">No disponible</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Estado Actual del Stock -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-boxes mr-2"></i>Estado Actual del Stock
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <h3 class="text-primary mb-0">{{ stock.cantidad_actual }}</h3>
+                                        <small class="text-muted">Cantidad Actual</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <h3 class="text-warning mb-0">{{ stock.stock_minimo }}</h3>
+                                        <small class="text-muted">Stock Mínimo</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        {% if stock.estado_stock == 'sin_stock' %}
+                                            <span class="badge badge-danger badge-lg">Sin Stock</span>
+                                        {% elif stock.estado_stock == 'stock_bajo' %}
+                                            <span class="badge badge-warning badge-lg">Stock Bajo</span>
+                                        {% else %}
+                                            <span class="badge badge-success badge-lg">Stock OK</span>
+                                        {% endif %}
+                                        <br><small class="text-muted">Estado</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario para Agregar Stock -->
+                    <form method="post" id="agregarStockForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.cantidad.id_for_label }}">
+                                        <i class="fas fa-plus-circle mr-1"></i>{{ form.cantidad.label }}
+                                    </label>
+                                    {{ form.cantidad }}
+                                    {% if form.cantidad.help_text %}
+                                        <small class="form-text text-muted">{{ form.cantidad.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in form.cantidad.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.motivo.id_for_label }}">
+                                        <i class="fas fa-comment mr-1"></i>{{ form.motivo.label }}
+                                    </label>
+                                    {{ form.motivo }}
+                                    {% if form.motivo.help_text %}
+                                        <small class="form-text text-muted">{{ form.motivo.help_text }}</small>
+                                    {% else %}
+                                        <small class="form-text text-muted">Ej: Compra nueva, Devolución, Ajuste de inventario</small>
+                                    {% endif %}
+                                    {% for error in form.motivo.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vista Previa del Resultado -->
+                        <div class="card border-info mb-4" id="vistaPrevia" style="display: none;">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-eye mr-1"></i>Vista Previa del Resultado
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <h4 class="text-success mb-0" id="nuevaCantidad">{{ stock.cantidad_actual }}</h4>
+                                            <small class="text-muted">Nueva Cantidad Total</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <h4 class="text-info mb-0" id="cantidadAgregada">+0</h4>
+                                            <small class="text-muted">Cantidad a Agregar</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <span class="badge badge-lg" id="nuevoEstado">{{ stock.estado_stock }}</span>
+                                            <br><small class="text-muted">Nuevo Estado</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-plus mr-2"></i>Agregar al Stock
+                            </button>
+                            <a href="{% url 'products:stock_list' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times mr-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+
+                    <!-- Acciones Adicionales -->
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="{% url 'products:stock_edit' producto.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-edit mr-1"></i>Editar Stock
+                            </a>
+                            <a href="{% url 'products:stock_movimientos' producto.id %}" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-history mr-1"></i>Ver Movimientos
+                            </a>
+                        </div>
+                        <small class="text-muted">
+                            Última actualización: {{ stock.fecha_actualizacion|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.badge-lg {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+}
+
+.card-title {
+    font-weight: 600;
+}
+
+.text-center h3, .text-center h4 {
+    font-weight: bold;
+}
+
+.form-control:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cantidadInput = document.getElementById('{{ form.cantidad.id_for_label }}');
+    const vistaPrevia = document.getElementById('vistaPrevia');
+    const nuevaCantidadSpan = document.getElementById('nuevaCantidad');
+    const cantidadAgregadaSpan = document.getElementById('cantidadAgregada');
+    const nuevoEstadoSpan = document.getElementById('nuevoEstado');
+    const form = document.getElementById('agregarStockForm');
+    
+    const stockActual = {{ stock.cantidad_actual }};
+    const stockMinimo = {{ stock.stock_minimo }};
+    
+    function actualizarVistaPrevia() {
+        const cantidadAgregar = parseInt(cantidadInput.value) || 0;
+        
+        if (cantidadAgregar > 0) {
+            const nuevaCantidad = stockActual + cantidadAgregar;
+            
+            // Mostrar vista previa
+            vistaPrevia.style.display = 'block';
+            
+            // Actualizar valores
+            nuevaCantidadSpan.textContent = nuevaCantidad;
+            cantidadAgregadaSpan.textContent = '+' + cantidadAgregar;
+            
+            // Determinar nuevo estado
+            let nuevoEstado, badgeClass;
+            if (nuevaCantidad === 0) {
+                nuevoEstado = 'Sin Stock';
+                badgeClass = 'badge-danger';
+            } else if (nuevaCantidad <= stockMinimo) {
+                nuevoEstado = 'Stock Bajo';
+                badgeClass = 'badge-warning';
+            } else {
+                nuevoEstado = 'Stock OK';
+                badgeClass = 'badge-success';
+            }
+            
+            nuevoEstadoSpan.textContent = nuevoEstado;
+            nuevoEstadoSpan.className = `badge badge-lg ${badgeClass}`;
+        } else {
+            vistaPrevia.style.display = 'none';
+        }
+    }
+    
+    // Actualizar vista previa en tiempo real
+    cantidadInput.addEventListener('input', actualizarVistaPrevia);
+    
+    // Validación del formulario
+    form.addEventListener('submit', function(e) {
+        const cantidad = parseInt(cantidadInput.value) || 0;
+        
+        if (cantidad <= 0) {
+            alert('La cantidad debe ser mayor a 0');
+            e.preventDefault();
+            return;
+        }
+        
+        // Confirmación para cantidades muy grandes
+        if (cantidad > 1000) {
+            if (!confirm(`¿Está seguro de agregar ${cantidad} unidades? Esta es una cantidad muy grande.`)) {
+                e.preventDefault();
+                return;
+            }
+        }
+    });
+    
+    // Enfocar el campo de cantidad al cargar
+    cantidadInput.focus();
+});
+</script>
+{% endblock %}

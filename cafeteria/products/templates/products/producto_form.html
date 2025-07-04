@@ -23,6 +23,14 @@
         </div>
 
         <div class="form-group">
+            <label for="{{ form.costo.id_for_label }}">Costo</label>
+            {{ form.costo|add_class:"form-control" }}
+            {% if form.costo.errors %}
+                <div class="text-danger">{{ form.costo.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
             <label for="{{ form.precio.id_for_label }}">Precio</label>
             {{ form.precio|add_class:"form-control" }}
             {% if form.precio.errors %}

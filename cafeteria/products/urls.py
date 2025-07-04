@@ -24,4 +24,11 @@ urlpatterns = [
     path('areas-preparacion/<int:pk>/editar/', views.AreaPreparacionUpdateView.as_view(), name='area_preparacion_update'),
     path('areas-preparacion/<int:pk>/eliminar/', views.AreaPreparacionDeleteView.as_view(), name='area_preparacion_confirm_delete'),
     path('areas-preparacion/<int:pk>/', views.AreaPreparacionDetailView.as_view(), name='Area_Preparacion_DetailView'),
+    
+    path('stock/', views.stock_list, name='stock_list'),
+    path('stock/<int:producto_id>/editar/', views.stock_edit, name='stock_edit'),
+    path('stock/<int:producto_id>/agregar/', views.stock_add, name='stock_add'),
+    path('stock/<int:producto_id>/movimientos/', views.stock_movimientos, name='stock_movimientos'),
+    path('stock/alertas/', views.stock_alertas, name='stock_alertas'),
+    path('stock/crear-todos/', views.crear_stock_productos, name='crear_stock_productos'),
 ]

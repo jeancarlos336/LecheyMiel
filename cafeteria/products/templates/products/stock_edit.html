@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Stock - {{ producto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-edit mr-2"></i>Editar Stock
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Información del Producto -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            {% if producto.imagen %}
+                            <img src="{{ producto.imagen.url }}" class="img-thumbnail" alt="{{ producto.nombre }}">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 100px;">
+                                <i class="fas fa-image fa-2x text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h4>{{ producto.nombre }}</h4>
+                            <p class="text-muted mb-1">Categoría: {{ producto.categoria.nombre }}</p>
+                            <p class="text-muted mb-1">Precio: ${{ producto.precio }}</p>
+                            <p class="mb-0">
+                                Estado: 
+                                {% if producto.esta_disponible %}
+                                    <span class="badge badge-success">Disponible</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">No disponible</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Estado Actual del Stock -->
+                    <div class="alert 
+                        {% if stock.estado_stock == 'sin_stock' %}alert-danger
+                        {% elif stock.estado_stock == 'stock_bajo' %}alert-warning
+                        {% else %}alert-success{% endif %}">
+                        <h5 class="alert-heading">Estado Actual del Stock</h5>
+                        <p class="mb-0">
+                            <strong>Cantidad Actual:</strong> {{ stock.cantidad_actual }} unidades<br>
+                            <strong>Stock Mínimo:</strong> {{ stock.stock_minimo }} unidades<br>
+                            <strong>Estado:</strong> 
+                            {% if stock.estado_stock == 'sin_stock' %}
+                                Sin Stock
+                            {% elif stock.estado_stock == 'stock_bajo' %}
+                                Stock Bajo
+                            {% else %}
+                                Stock OK
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Formulario -->
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.cantidad_actual.id_for_label }}">
+                                        {{ form.cantidad_actual.label }}
+                                    </label>
+                                    {{ form.cantidad_actual }}
+                                    {% if form.cantidad_actual.help_text %}
+                                        <small class="form-text text-muted">{{ form.cantidad_actual.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in form.cantidad_actual.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.stock_minimo.id_for_label }}">
+                                        {{ form.stock_minimo.label }}
+                                    </label>
+                                    {{ form.stock_minimo }}
+                                    {% if form.stock_minimo.help_text %}
+                                        <small class="form-text text-muted">{{ form.stock_minimo.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in form.stock_minimo.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-2"></i>Guardar Cambios
+                            </button>
+                            <a href="{% url 'products:stock_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times mr-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+
+                    <!-- Acciones Adicionales -->
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <a href="{% url 'products:stock_add' producto.id %}" class="btn btn-success btn-sm">
+                                <i class="fas fa-plus mr-1"></i>Agregar Stock
+                            </a>
+                            <a href="{% url 'products:stock_movimientos' producto.id %}" class="btn btn-info btn-sm">
+                                <i class="fas fa-history mr-1"></i>Ver Movimientos
+                            </a>
+                        </div>
+                        <small class="text-muted align-self-center">
+                            Última actualización: {{ stock.fecha_actualizacion|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

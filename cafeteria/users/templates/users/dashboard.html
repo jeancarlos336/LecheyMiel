@@ -181,7 +181,10 @@
           <div class="d-flex justify-content-around">
             <a href="{% url 'products:producto_list' %}" class="btn btn-primary">Productos</a>
             <a href="{% url 'products:categoria_list' %}" class="btn btn-info">Categorías</a>
+          </div>
+          <div class="d-flex justify-content-around mt-2">
             <a href="{% url 'products:area_preparacion_list' %}" class="btn btn-warning">Áreas</a>
+            <a href="{% url 'products:stock_list' %}" class="btn btn-danger">Control de Stock</a>
           </div>
         </div>
       </div>
@@ -236,10 +239,13 @@
               <i class="fas fa-balance-scale me-1"></i> Balance Anual
             </a>
           </div>
-          <div class="d-flex justify-content-center">
+          <div class="d-flex justify-content-around mb-2">
             <a href="{% url 'orders:ranking_productos' %}" class="btn btn-warning">
               <i class="fas fa-trophy me-1"></i> Ranking de Ventas
             </a>
+            <a href="{% url 'orders:informe_pagos' %}" class="btn btn-danger">
+              <i class="fas fa-dollar-sign"></i> Ganancias
+            </a>            
           </div>
         </div>
       </div>
