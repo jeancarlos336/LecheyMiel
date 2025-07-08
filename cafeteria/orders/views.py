@@ -1053,8 +1053,8 @@ def listar_pagos_pendientes(request):
     if cliente_busqueda:
         pagos_pendientes = pagos_pendientes.filter(cliente_nombre__icontains=cliente_busqueda)
     
-    # Ordenar por fecha de promesa
-    pagos_pendientes = pagos_pendientes.order_by('cliente_nombre')
+    # Ordenar por fecha de creación del pedido (más reciente primero)
+    pagos_pendientes = pagos_pendientes.order_by('-pago__pedido__fecha_creacion')
     
     # Calcular el total pendiente de los pagos filtrados
     total_pendiente = pagos_pendientes.aggregate(total=Sum('pago__monto'))['total'] or 0

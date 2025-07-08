@@ -1,5 +1,6 @@
 <!-- templates/orders/pagos_pendientes.html -->
 {% extends "base.html" %}
+{% load tz %}
 {% block content %}
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -40,7 +41,7 @@
         <div class="card-header bg-warning text-dark">
             <div class="d-flex justify-content-between align-items-center">
                 <h3 class="mb-0">Pagos por Cobrar</h3>
-                <h4 class="mb-0">Total pendiente: ${{ total_pendiente|floatformat:2 }}</h4>
+                <h4 class="mb-0">Total pendiente: ${{ total_pendiente|floatformat:0 }}</h4>
             </div>
         </div>
         <div class="card-body">
@@ -49,10 +50,10 @@
                     <thead>
                         <tr>
                             <th>Cliente</th>
-                            <th>Fecha Promesa</th>
+                            <th>Fecha del Pedido</th>   
                             <th>Pedido #</th>
                             <th>Monto</th>
-                            <th>Notas</th>
+                            <th>Días Pendientes</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -60,10 +61,32 @@
                         {% for pago in pagos_pendientes %}
                         <tr>
                             <td>{{ pago.cliente_nombre }}</td>
-                            <td>{{ pago.fecha_promesa|date:"d/m/Y" }}</td>
-                            <td>{{ pago.pago.pedido.id }}</td>
-                            <td>${{ pago.pago.monto|floatformat:2 }}</td>
-                            <td>{{ pago.notas_adicionales|default:"-" }}</td>
+                            <td>{{ pago.pago.pedido.fecha_creacion|date:"d/m/Y" }}</td>                         
+                            <td>
+                                <a href="{% url 'orders:detalle_pedido' pago.pago.pedido.id %}" class="text-decoration-none">
+                                    #{{ pago.pago.pedido.id }}
+                                </a>
+                            </td>
+                            <td>${{ pago.pago.monto|floatformat:0 }}</td>                            
+                            <td>
+                                {% now "U" as today_timestamp %}
+                                {% if pago.fecha_promesa %}
+                                    {% now "Y-m-d" as today_str %}
+                                    {% if pago.fecha_promesa|date:"Y-m-d" < today_str %}
+                                        <span class="badge bg-danger">
+                                            Vencido hace {{ pago.fecha_promesa|timesince }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            Pendiente desde hace {{ pago.pago.pedido.fecha_creacion|timesince }}
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        Pendiente desde hace {{ pago.pago.pedido.fecha_creacion|timesince }}
+                                    </span>
+                                {% endif %}
+                            </td>                           
                             <td>
                                 <a href="{% url 'orders:marcar_pago_pagado' pago.id %}" class="btn btn-success btn-sm">
                                     Marcar como Pagado
