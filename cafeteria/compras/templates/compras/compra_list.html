@@ -1,98 +1,317 @@
-<!-- compras/templates/compras/compra_list.html -->
 {% extends "base.html" %}
 
 {% block title %}Compras | Sistema de Compras{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Compras</h1>
-        <a href="{% url 'compras:compra_create' %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Nueva Compra
-        </a>
+<div class="container-fluid px-4 mt-4">
+    <!-- Encabezado con breadcrumb -->
+    <div class="d-sm-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-shopping-cart text-primary me-2"></i>Listado de Compras
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'users:dashboard' %}">Inicio</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Compras</li>
+            </ol>
+        </nav>
     </div>
 
-    <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5><i class="fas fa-filter"></i> Filtros</h5>
+    <!-- Card principal -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white">
+            <h6 class="m-0 font-weight-bold text-primary">Registro de Compras</h6>
+            <div>
+                <a href="{% url 'compras:compra_create' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i> Nueva Compra
+                </a>
+            </div>
         </div>
+        
         <div class="card-body">
-            <form method="get" class="row">
-                <div class="col-md-5 mb-3">
-                    <label for="proveedor" class="form-label">Proveedor</label>
-                    <select name="proveedor" id="proveedor" class="form-select">
-                        <option value="">Todos los proveedores</option>
-                        {% for proveedor in proveedores %}
-                        <option value="{{ proveedor.id }}" {% if request.GET.proveedor == proveedor.id|stringformat:"i" %}selected{% endif %}>
-                            {{ proveedor.nombre }}
-                        </option>
-                        {% endfor %}
-                    </select>
+            <!-- Filtros acordeón -->
+            <div class="accordion mb-4" id="filterAccordion">
+                <div class="accordion-item border-0">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button collapsed bg-light shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilters" aria-expanded="false" aria-controls="collapseFilters">
+                            <i class="fas fa-filter text-primary me-2"></i>Filtros de Búsqueda
+                        </button>
+                    </h2>
+                    <div id="collapseFilters" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#filterAccordion">
+                        <div class="accordion-body pt-3 pb-1">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="proveedor" class="form-label small fw-bold">Proveedor</label>
+                                    <select name="proveedor" id="proveedor" class="form-select form-select-sm">
+                                        <option value="">Todos los proveedores</option>
+                                        {% for proveedor in proveedores %}
+                                            <option value="{{ proveedor.id }}" {% if request.GET.proveedor == proveedor.id|stringformat:"i" %}selected{% endif %}>
+                                                {{ proveedor.nombre }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="tipo_documento" class="form-label small fw-bold">Tipo Documento</label>
+                                    <select name="tipo_documento" id="tipo_documento" class="form-select form-select-sm">
+                                        <option value="">Todos los tipos</option>
+                                        {% for value, name in tipos_documento.items %}
+                                            <option value="{{ value }}" {% if request.GET.tipo_documento == value %}selected{% endif %}>
+                                                {{ name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="tipo_compra" class="form-label small fw-bold">Tipo de Compra</label>
+                                    <select name="tipo_compra" id="tipo_compra" class="form-select form-select-sm">
+                                        <option value="">Todos los tipos</option>
+                                        {% for tipo in tipos_compra %}
+                                            <option value="{{ tipo.id }}" {% if request.GET.tipo_compra == tipo.id|stringformat:"i" %}selected{% endif %}>
+                                                {{ tipo.nombre }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="fecha_desde" class="form-label small fw-bold">Fecha Desde</label>
+                                    <input type="date" name="fecha_desde" id="fecha_desde" class="form-control form-control-sm" value="{{ request.GET.fecha_desde }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="fecha_hasta" class="form-label small fw-bold">Fecha Hasta</label>
+                                    <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control form-control-sm" value="{{ request.GET.fecha_hasta }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="destino" class="form-label small fw-bold">Destino</label>
+                                    <input type="text" name="destino" id="destino" class="form-control form-control-sm" placeholder="Filtrar por destino" value="{{ request.GET.destino }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="monto_min" class="form-label small fw-bold">Monto Mínimo</label>
+                                    <input type="number" name="monto_min" id="monto_min" class="form-control form-control-sm" placeholder="Monto mínimo" value="{{ request.GET.monto_min }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="monto_max" class="form-label small fw-bold">Monto Máximo</label>
+                                    <input type="number" name="monto_max" id="monto_max" class="form-control form-control-sm" placeholder="Monto máximo" value="{{ request.GET.monto_max }}">
+                                </div>
+                                <div class="col-12 d-flex justify-content-end gap-2 pt-2">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-search me-1"></i> Buscar
+                                    </button>
+                                    <a href="{% url 'compras:compra_list' %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-undo me-1"></i> Limpiar
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-5 mb-3">
-                    <label for="tipo_documento" class="form-label">Tipo de Documento</label>
-                    <select name="tipo_documento" id="tipo_documento" class="form-select">
-                        <option value="">Todos los tipos</option>
-                        {% for value, name in tipos_documento.items %}
-                        <option value="{{ value }}" {% if request.GET.tipo_documento == value %}selected{% endif %}>
-                            {{ name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-end mb-3">
-                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+            </div>
 
-    <div class="card">
-        <div class="card-body">
+            <!-- Resumen de filtros aplicados -->
+            {% if has_filters %}
+            <div class="alert alert-info py-2 mb-3 small">
+                <strong>Filtros aplicados:</strong>
+                {% if request.GET.proveedor %} 
+                    <span class="badge bg-primary me-1">Proveedor: {{ selected_proveedor.nombre }}</span>
+                {% endif %}
+                {% if request.GET.tipo_documento %}
+                    <span class="badge bg-primary me-1">Documento: {{ request.GET.tipo_documento }}</span>
+                {% endif %}
+                {% if request.GET.tipo_compra %}
+                    <span class="badge bg-primary me-1">Tipo Compra: {{ selected_tipo_compra.nombre }}</span>
+                {% endif %}
+                {% if request.GET.fecha_desde or request.GET.fecha_hasta %}
+                    <span class="badge bg-primary me-1">
+                        Fecha: {{ request.GET.fecha_desde|default:"Inicio" }} a {{ request.GET.fecha_hasta|default:"Hoy" }}
+                    </span>
+                {% endif %}
+                {% if request.GET.destino %}
+                    <span class="badge bg-primary me-1">Destino: {{ request.GET.destino }}</span>
+                {% endif %}
+                {% if request.GET.monto_min or request.GET.monto_max %}
+                    <span class="badge bg-primary me-1">
+                        Monto: ${{ request.GET.monto_min|default:"0" }} a ${{ request.GET.monto_max|default:"Max" }}
+                    </span>
+                {% endif %}
+                <a href="{% url 'compras:compra_list' %}" class="text-danger ms-2"><small><i class="fas fa-times"></i> Quitar filtros</small></a>
+            </div>
+            {% endif %}
+
+            <!-- Tabla de compras -->
             {% if compras %}
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Proveedor</th>
-                            <th>Documento</th>
-                            <th>Destino</th>
-                            <th>Total</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for compra in compras %}
-                        <tr>
-                            <td>{{ compra.fecha }}</td>
-                            <td>{{ compra.proveedor.nombre }}</td>
-                            <td>{{ compra.get_tipo_documento_display }} {{ compra.numero_documento|default:"" }}</td>
-                            <td>{{ compra.destino }}</td>
-                            <td>${{ compra.total }}</td>
-                            <td>
-                                <a href="{% url 'compras:compra_detail' compra.id %}" class="btn btn-sm btn-info">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{% url 'compras:compra_update' compra.id %}" class="btn btn-sm btn-warning">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="{% url 'compras:compra_delete' compra.id %}" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-trash"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-striped align-middle" id="dataTable" width="100%" cellspacing="0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center">Fecha</th>
+                                <th>Proveedor</th>
+                                <th>Tipo</th>
+                                <th>Documento</th>
+                                <th>Destino</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for compra in compras %}
+                            <tr>
+                                <td class="text-center">{{ compra.fecha|date:"d-m-Y" }}</td>
+                                <td>
+                                    <span class="d-block fw-bold">{{ compra.proveedor.nombre }}</span>
+                                    <small class="text-muted">{{ compra.proveedor.rut }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ compra.tipo_compra.color|default:'secondary' }}">
+                                        {{ compra.tipo_compra }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ compra.get_tipo_documento_display }}</span>
+                                    {% if compra.numero_documento %}
+                                    <span class="d-block small">#{{ compra.numero_documento }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ compra.destino|default:"-" }}</td>
+                                <td class="text-end fw-bold">${{ compra.total|floatformat:0 }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ compra.get_estado_color }}">
+                                        {{ compra.get_estado_display }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'compras:compra_detail' compra.id %}" class="btn btn-info" title="Ver detalle" data-bs-toggle="tooltip">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'compras:compra_update' compra.id %}" class="btn btn-warning" title="Editar" data-bs-toggle="tooltip">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-danger" title="Eliminar" data-bs-toggle="modal" data-bs-target="#deleteModal{{ compra.id }}">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Modal de confirmación para eliminar -->
+                                    <div class="modal fade" id="deleteModal{{ compra.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ compra.id }}" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title" id="deleteModalLabel{{ compra.id }}">Confirmar Eliminación</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>¿Estás seguro que deseas eliminar la compra del {{ compra.fecha|date:"d/m/Y" }} a {{ compra.proveedor.nombre }} por ${{ compra.total|floatformat:0 }}?</p>
+                                                    <p class="text-danger fw-bold">Esta acción no se puede deshacer.</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <a href="{% url 'compras:compra_delete' compra.id %}" class="btn btn-danger">Eliminar</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="5" class="text-end">Total:</th>
+                                <th class="text-end">${{ total_compras|floatformat:0 }}</th>
+                                <th colspan="2"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if is_paginated %}
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <p class="small text-muted mb-0">
+                            Mostrando {{ compras.start_index }} a {{ compras.end_index }} de {{ compras.paginator.count }} registros
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <nav aria-label="Page navigation" class="float-end">
+                            <ul class="pagination pagination-sm">
+                                {% if compras.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                                            <span aria-hidden="true">&laquo;&laquo;</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ compras.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo;</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for num in compras.paginator.page_range %}
+                                    {% if compras.number == num %}
+                                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                    {% elif num > compras.number|add:'-3' and num < compras.number|add:'3' %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if compras.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ compras.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                                            <span aria-hidden="true">&raquo;</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ compras.paginator.num_pages }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                                            <span aria-hidden="true">&raquo;&raquo;</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                {% endif %}
             {% else %}
-            <div class="alert alert-info">
-                No hay compras registradas que coincidan con los filtros seleccionados.
-            </div>
+                <div class="alert alert-warning mb-0 text-center py-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i> No se encontraron compras que coincidan con los criterios de búsqueda.
+                </div>
             {% endif %}
         </div>
     </div>
-</div>    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Inicializar tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    
+    // Exportar a Excel
+    $('#export-excel').click(function() {
+        // Aquí iría el código para exportar a Excel
+        // Podrías usar libraries como SheetJS o hacer una llamada AJAX
+        alert('Función de exportación a Excel. Implementar según necesidades.');
+    });
+    
+    // Validación de fechas
+    $('form').submit(function() {
+        const fechaDesde = $('#fecha_desde').val();
+        const fechaHasta = $('#fecha_hasta').val();
+        
+        if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+            alert('La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
+            return false;
+        }
+        
+        if ($('#monto_min').val() && $('#monto_max').val() && parseFloat($('#monto_min').val()) > parseFloat($('#monto_max').val())) {
+            alert('El monto mínimo no puede ser mayor que el monto máximo');
+            return false;
+        }
+    });
+});
+</script>
 {% endblock %}

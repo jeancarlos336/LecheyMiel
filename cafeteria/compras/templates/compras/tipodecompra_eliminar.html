@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Eliminar Tipo de Compra{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="card-title">
+                        <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-warning"></i>
+                        <strong>¿Estás seguro de que deseas eliminar este tipo de compra?</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Tipo de compra:</strong> {{ object.nombre }}<br>
+                        <strong>Categoría:</strong> {{ object.get_categoria_display }}<br>
+                        {% if object.descripcion %}
+                            <strong>Descripción:</strong> {{ object.descripcion }}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Nota:</strong> Esta acción no se puede deshacer. Si hay compras asociadas a este tipo, 
+                        deberás reasignarlas antes de eliminar.
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'compras:tipodecompralista' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

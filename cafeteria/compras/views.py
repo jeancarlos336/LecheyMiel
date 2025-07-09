@@ -5,9 +5,8 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-
-from .models import Proveedor, Compra
-from .forms import ProveedorForm, CompraForm
+from .models import Proveedor, Compra,TipoCompra
+from .forms import ProveedorForm, CompraForm,TipoCompraForm
 import calendar
 from datetime import datetime
 from decimal import Decimal
@@ -17,6 +16,7 @@ from django.db.models.functions import TruncMonth, ExtractMonth, ExtractYear
 from django.utils.translation import gettext as _
 from compras.models import Compra
 from orders.models import Pago
+from django.utils import timezone
 
 # Vistas para Proveedor
 class ProveedorListView(ListView):
@@ -66,32 +66,109 @@ class ProveedorDeleteView(LoginRequiredMixin, DeleteView):
         messages.success(request, 'Proveedor eliminado exitosamente.')
         return super().delete(request, *args, **kwargs)
 
-# Vistas para Compra
+
+
+
+
 class CompraListView(ListView):
     model = Compra
     template_name = 'compras/compra_list.html'
     context_object_name = 'compras'
+    paginate_by = 25
     ordering = ['-fecha']
-    
+
     def get_queryset(self):
-        queryset = super().get_queryset()
-        
-        # Filtrar por proveedor si se proporciona
+        queryset = super().get_queryset().select_related('proveedor', 'tipo_compra')
+
+        # Filtros
         proveedor_id = self.request.GET.get('proveedor')
+        tipo_doc = self.request.GET.get('tipo_documento')
+        tipo_compra_id = self.request.GET.get('tipo_compra')
+        fecha_desde = self.request.GET.get('fecha_desde')
+        fecha_hasta = self.request.GET.get('fecha_hasta')
+        destino = self.request.GET.get('destino')
+        monto_min = self.request.GET.get('monto_min')
+        monto_max = self.request.GET.get('monto_max')
+
         if proveedor_id:
             queryset = queryset.filter(proveedor_id=proveedor_id)
-        
-        # Filtrar por tipo de documento si se proporciona
-        tipo_doc = self.request.GET.get('tipo_documento')
+
         if tipo_doc:
             queryset = queryset.filter(tipo_documento=tipo_doc)
-            
+
+        if tipo_compra_id:
+            queryset = queryset.filter(tipo_compra_id=tipo_compra_id)
+
+        if fecha_desde:
+            try:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                queryset = queryset.filter(fecha__gte=fecha_desde)
+            except ValueError:
+                pass
+
+        if fecha_hasta:
+            try:
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+                queryset = queryset.filter(fecha__lte=fecha_hasta)
+            except ValueError:
+                pass
+
+        if destino:
+            queryset = queryset.filter(destino__icontains=destino)
+
+        if monto_min:
+            try:
+                queryset = queryset.filter(total__gte=float(monto_min))
+            except ValueError:
+                pass
+
+        if monto_max:
+            try:
+                queryset = queryset.filter(total__lte=float(monto_max))
+            except ValueError:
+                pass
+
         return queryset
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['proveedores'] = Proveedor.objects.all()
+        
+        # Datos para los filtros
+        context['proveedores'] = Proveedor.objects.all().order_by('nombre')
         context['tipos_documento'] = dict(Compra.TIPO_DOCUMENTO_CHOICES)
+        context['tipos_compra'] = TipoCompra.objects.all().order_by('nombre')
+        
+        # Datos para los filtros aplicados
+        context['has_filters'] = any(
+            key in self.request.GET 
+            for key in ['proveedor', 'tipo_documento', 'tipo_compra', 
+                       'fecha_desde', 'fecha_hasta', 'destino', 
+                       'monto_min', 'monto_max']
+        )
+        
+        # Obtener los objetos completos para mostrar en los filtros aplicados
+        proveedor_id = self.request.GET.get('proveedor')
+        if proveedor_id:
+            context['selected_proveedor'] = Proveedor.objects.filter(id=proveedor_id).first()
+        
+        tipo_compra_id = self.request.GET.get('tipo_compra')
+        if tipo_compra_id:
+            context['selected_tipo_compra'] = TipoCompra.objects.filter(id=tipo_compra_id).first()
+        
+        # Calcular total de compras filtradas
+        queryset = self.get_queryset()
+        context['total_compras'] = queryset.aggregate(total=Sum('total'))['total'] or 0
+        
+        # Configuración de paginación
+        page_obj = context.get('page_obj')
+        if page_obj:
+            context['compras'] = page_obj.object_list
+            # Agregar índices de elementos mostrados
+            start_index = page_obj.start_index()
+            end_index = page_obj.end_index()
+            context['compras'].start_index = start_index
+            context['compras'].end_index = end_index
+        
         return context
 
 class CompraDetailView(DetailView):
@@ -115,7 +192,8 @@ class CompraUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'compras/compra_form.html'
     
     def get_success_url(self):
-        return reverse_lazy('compras:compra_detail', kwargs={'pk': self.object.pk})
+        return reverse_lazy('compras:compra_list')
+        
     
     def form_valid(self, form):
         messages.success(self.request, 'Compra actualizada exitosamente.')
@@ -220,3 +298,45 @@ class BalanceAnualView(LoginRequiredMixin, View):
         }
         
         return render(request, self.template_name, context)
+    
+################################TIPO DE COMPRA
+
+
+
+class TipoCompraListView(LoginRequiredMixin, ListView):
+    model = TipoCompra
+    template_name = 'compras/tipocompra_lista.html'
+    context_object_name = 'tipos_compra'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        return TipoCompra.objects.all().order_by('categoria', 'nombre')
+
+class TipoCompraCreateView(LoginRequiredMixin, CreateView):
+    model = TipoCompra
+    form_class = TipoCompraForm
+    template_name = 'compras/tipocompra_crear.html'
+    success_url = reverse_lazy('compras:tipodecompralista')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de compra creado exitosamente.')
+        return super().form_valid(form)
+
+class TipoCompraUpdateView(LoginRequiredMixin, UpdateView):
+    model = TipoCompra
+    form_class = TipoCompraForm
+    template_name = 'compras/tipodecompra_editar.html'
+    success_url = reverse_lazy('compras:tipodecompralista')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de compra actualizado exitosamente.')
+        return super().form_valid(form)
+
+class TipoCompraDeleteView(LoginRequiredMixin, DeleteView):
+    model = TipoCompra
+    template_name = 'compras/tipodecompra_eliminar.html'
+    success_url = reverse_lazy('compras:tipodecompralista')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'Tipo de compra eliminado exitosamente.')
+        return super().delete(request, *args, **kwargs)

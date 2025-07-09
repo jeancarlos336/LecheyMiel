@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tipos de Compra{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Tipos de Compra</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'compras:crear' %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus"></i> Nuevo Tipo
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    {% if tipos_compra %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Categoría</th>
+                                        <th>Descripción</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tipo in tipos_compra %}
+                                    <tr>
+                                        <td>{{ tipo.nombre }}</td>
+                                        <td>
+                                            {% if tipo.categoria == 'venta' %}
+                                                <span class="badge bg-success">{{ tipo.get_categoria_display }}</span>
+                                            {% elif tipo.categoria == 'gasto' %}
+                                                <span class="badge bg-warning">{{ tipo.get_categoria_display }}</span>
+                                            {% elif tipo.categoria == 'inversion' %}
+                                                <span class="badge bg-info">{{ tipo.get_categoria_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ tipo.descripcion|default:"Sin descripción" }}</td>
+                                        <td>
+                                            <a href="{% url 'compras:editar' tipo.pk %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </a>
+                                            <a href="{% url 'compras:eliminar' tipo.pk %}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i> Eliminar
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {% if is_paginated %}
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No hay tipos de compra registrados.
+                            <a href="{% url 'compras:crear' %}" class="btn btn-success btn-sm ms-2">
+                                Crear el primero
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -150,8 +150,10 @@
             <p class="card-text">Administra Proveedores y Compras</p>
             <div class="d-flex justify-content-around">
               <a href="{% url 'compras:compra_list' %}" class="btn btn-primary"><i class="fas fa-user-cog me-1"></i> Compras</a>
-              <a href="{% url 'compras:proveedor_list' %}" class="btn btn-info"><i class="fas fa-user-circle me-1"></i> Proveedores</a>
-              
+              <a href="{% url 'compras:proveedor_list' %}" class="btn btn-info"><i class="fas fa-user-circle me-1"></i> Proveedores</a>   
+            </div>
+            <div class="d-flex justify-content-around mt-2">
+              <a href="{% url 'compras:tipodecompralista' %}" class="btn btn-warning"><i class="fas fa-user-circle me-1"></i> Tipo Compra</a>       
             </div>
           </div>
         </div>
