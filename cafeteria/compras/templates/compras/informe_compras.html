@@ -1,0 +1,455 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load producto_templatetags %}
+{% block title %}Dashboard de Compras{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 20px 0;
+    }
+    .stat-card {
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .chart-card {
+        min-height: 500px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-chart-line"></i> Dashboard de Compras</h2>
+            <hr>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-filter"></i> Filtros
+                        <button class="btn btn-sm btn-outline-primary float-right" type="button" onclick="toggleFiltros()">
+                            <i class="fas fa-chevron-down" id="chevron-icon"></i>
+                        </button>
+                    </h5>
+                </div>
+                <div class="collapse show" id="filtros">
+                    <div class="card-body">
+                        <form method="get" class="form-inline">
+                            <div class="row w-100">
+                                <div class="col-md-3 mb-2">
+                                    {{ form.fecha_inicio.label_tag }}
+                                    {{ form.fecha_inicio }}
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    {{ form.fecha_fin.label_tag }}
+                                    {{ form.fecha_fin }}
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    {{ form.proveedor.label_tag }}
+                                    {{ form.proveedor }}
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    {{ form.tipo_compra.label_tag }}
+                                    {{ form.tipo_compra }}
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    {{ form.tipo_documento.label_tag }}
+                                    {{ form.tipo_documento }}
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    {{ form.destino.label_tag }}
+                                    {{ form.destino }}
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    {{ form.total_min.label_tag }}
+                                    {{ form.total_min }}
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    {{ form.total_max.label_tag }}
+                                    {{ form.total_max }}
+                                </div>
+                            </div>
+                            <div class="row w-100 mt-3">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> Filtrar
+                                    </button>
+                                    <a href="{% url 'compras:informe_compras' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Limpiar
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen mejorado -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Total Compras</h5>
+                            <h2>{{ total_compras }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-shopping-cart fa-3x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Total Monto</h5>
+                            <h2>${{ total_monto|floatformat:0 }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-dollar-sign fa-3x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Promedio por Compra</h5>
+                            <h2>${{ total_monto|div:total_compras|floatformat:0 }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calculator fa-3x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Proveedores Activos</h5>
+                            <h2>{{ stats_proveedor|length }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-3x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line"></i> Evolución de Compras por Mes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="comprasPorMesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie"></i> Tipos de Documento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="tiposDocumentoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar"></i> Top 5 Proveedores
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="proveedoresChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list"></i> Resumen por Tipo de Compra
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for stat in stats_tipo_compra %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                        <div>
+                            <strong>{{ stat.tipo_compra__nombre|default:"Sin categoría" }}</strong>
+                            <br>
+                            <small class="text-muted">{{ stat.cantidad }} compras</small>
+                        </div>
+                        <div class="text-right">
+                            <h5 class="mb-0 text-primary">${{ stat.monto|floatformat:0 }}</h5>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Resumen por Proveedor -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table"></i> Resumen por Proveedor
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Proveedor</th>
+                                    <th class="text-center">Cantidad de Compras</th>
+                                    <th class="text-right">Monto Total</th>
+                                    <th class="text-right">Promedio por Compra</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in stats_proveedor %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ stat.proveedor__nombre }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge badge-primary">{{ stat.cantidad }}</span>
+                                    </td>
+                                    <td class="text-right">
+                                        <strong>${{ stat.monto|floatformat:0 }}</strong>
+                                    </td>
+                                    <td class="text-right">
+                                        ${{ stat.monto|div:stat.cantidad|floatformat:0 }}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        <i class="fas fa-search"></i> No se encontraron datos con los filtros aplicados.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<script>
+// Función para toggle de filtros
+function toggleFiltros() {
+    const filtros = document.getElementById('filtros');
+    const chevron = document.getElementById('chevron-icon');
+    
+    if (filtros.classList.contains('show')) {
+        filtros.classList.remove('show');
+        chevron.classList.remove('fa-chevron-up');
+        chevron.classList.add('fa-chevron-down');
+    } else {
+        filtros.classList.add('show');
+        chevron.classList.remove('fa-chevron-down');
+        chevron.classList.add('fa-chevron-up');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-expandir filtros si hay parámetros GET
+    const urlParams = new URLSearchParams(window.location.search);
+    const filtros = document.getElementById('filtros');
+    const chevron = document.getElementById('chevron-icon');
+    
+    if (urlParams.toString()) {
+        filtros.classList.add('show');
+        chevron.classList.remove('fa-chevron-down');
+        chevron.classList.add('fa-chevron-up');
+    }
+    
+    // Gráfico de evolución por mes
+    const ctx1 = document.getElementById('comprasPorMesChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: {{ meses_labels|safe }},
+            datasets: [{
+                label: 'Cantidad de Compras',
+                data: {{ meses_cantidades|safe }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1,
+                yAxisID: 'y'
+            }, {
+                label: 'Monto Total ($)',
+                data: {{ meses_montos|safe }},
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Evolución de Compras por Mes'
+                },
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Cantidad'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Monto ($)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+    
+    // Gráfico de torta para tipos de documento
+    const ctx2 = document.getElementById('tiposDocumentoChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: {{ torta_labels|safe }},
+            datasets: [{
+                data: {{ torta_data|safe }},
+                backgroundColor: {{ torta_colors|safe }},
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Distribución por Tipo de Documento'
+                },
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Gráfico de barras para proveedores
+    const ctx3 = document.getElementById('proveedoresChart').getContext('2d');
+    new Chart(ctx3, {
+        type: 'bar',
+        data: {
+            labels: {{ proveedores_labels|safe }},
+            datasets: [{
+                label: 'Monto Total ($)',
+                data: {{ proveedores_data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Top 5 Proveedores por Monto'
+                },
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Monto ($)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Proveedores'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

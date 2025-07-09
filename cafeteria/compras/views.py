@@ -10,13 +10,16 @@ from .forms import ProveedorForm, CompraForm,TipoCompraForm
 import calendar
 from datetime import datetime
 from decimal import Decimal
-from django.db.models import Sum
+from django.db.models import Sum, Count, Q
 from django.shortcuts import render
 from django.db.models.functions import TruncMonth, ExtractMonth, ExtractYear
 from django.utils.translation import gettext as _
 from compras.models import Compra
 from orders.models import Pago
 from django.utils import timezone
+from django.core.paginator import Paginator
+from .forms import FiltroComprasForm
+import json
 
 # Vistas para Proveedor
 class ProveedorListView(ListView):
@@ -340,3 +343,119 @@ class TipoCompraDeleteView(LoginRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Tipo de compra eliminado exitosamente.')
         return super().delete(request, *args, **kwargs)
+    
+#Informe de compras
+
+
+def informe_compras(request):
+    form = FiltroComprasForm(request.GET or None)
+    compras = Compra.objects.all()
+    
+    # Aplicar filtros
+    if form.is_valid():
+        if form.cleaned_data['fecha_inicio']:
+            compras = compras.filter(fecha__gte=form.cleaned_data['fecha_inicio'])
+        
+        if form.cleaned_data['fecha_fin']:
+            compras = compras.filter(fecha__lte=form.cleaned_data['fecha_fin'])
+        
+        if form.cleaned_data['proveedor']:
+            compras = compras.filter(proveedor=form.cleaned_data['proveedor'])
+        
+        if form.cleaned_data['tipo_compra']:
+            compras = compras.filter(tipo_compra=form.cleaned_data['tipo_compra'])
+        
+        if form.cleaned_data['tipo_documento']:
+            compras = compras.filter(tipo_documento=form.cleaned_data['tipo_documento'])
+        
+        if form.cleaned_data['destino']:
+            compras = compras.filter(destino__icontains=form.cleaned_data['destino'])
+        
+        if form.cleaned_data['total_min']:
+            compras = compras.filter(total__gte=form.cleaned_data['total_min'])
+        
+        if form.cleaned_data['total_max']:
+            compras = compras.filter(total__lte=form.cleaned_data['total_max'])
+    
+    # Calcular estadísticas
+    total_compras = compras.count()
+    total_monto = compras.aggregate(total=Sum('total'))['total'] or 0
+    
+    # Estadísticas por tipo de documento
+    stats_documento = compras.values('tipo_documento').annotate(
+        cantidad=Count('id'),
+        monto=Sum('total')
+    ).order_by('-monto')
+    
+    # Estadísticas por proveedor
+    stats_proveedor = compras.values('proveedor__nombre').annotate(
+        cantidad=Count('id'),
+        monto=Sum('total')
+    ).order_by('-monto')[:10]  # Top 10 proveedores
+    
+    # Estadísticas por tipo de compra
+    stats_tipo_compra = compras.values('tipo_compra__nombre').annotate(
+        cantidad=Count('id'),
+        monto=Sum('total')
+    ).order_by('-monto')
+    
+    # Datos para gráficos
+    # Compras por mes
+    compras_por_mes = compras.annotate(
+        mes=TruncMonth('fecha')
+    ).values('mes').annotate(
+        cantidad=Count('id'),
+        monto=Sum('total')
+    ).order_by('mes')
+    
+    # Preparar datos para Chart.js
+    meses_labels = []
+    meses_cantidades = []
+    meses_montos = []
+    
+    for item in compras_por_mes:
+        meses_labels.append(item['mes'].strftime('%b %Y'))
+        meses_cantidades.append(item['cantidad'])
+        meses_montos.append(float(item['monto']))
+    
+    # Datos para gráfico de torta - Tipos de documento
+    torta_labels = []
+    torta_data = []
+    torta_colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+    
+    for i, stat in enumerate(stats_documento):
+        torta_labels.append(stat['tipo_documento'].title())
+        torta_data.append(float(stat['monto']))
+    
+    # Datos para gráfico de barras - Top proveedores
+    proveedores_labels = []
+    proveedores_data = []
+    
+    for stat in stats_proveedor[:5]:  # Top 5 proveedores
+        proveedores_labels.append(stat['proveedor__nombre'][:20])
+        proveedores_data.append(float(stat['monto']))
+    
+    # Paginación - removido porque no necesitamos detalle
+    # paginator = Paginator(compras, 20)
+    # page_number = request.GET.get('page')
+    # page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'form': form,
+        'total_compras': total_compras,
+        'total_monto': total_monto,
+        'stats_documento': stats_documento,
+        'stats_proveedor': stats_proveedor,
+        'stats_tipo_compra': stats_tipo_compra,
+        # Datos para gráficos
+        'meses_labels': json.dumps(meses_labels),
+        'meses_cantidades': json.dumps(meses_cantidades),
+        'meses_montos': json.dumps(meses_montos),
+        'torta_labels': json.dumps(torta_labels),
+        'torta_data': json.dumps(torta_data),
+        'torta_colors': json.dumps(torta_colors[:len(torta_data)]),
+        'proveedores_labels': json.dumps(proveedores_labels),
+        'proveedores_data': json.dumps(proveedores_data),
+    }
+    
+    return render(request, 'compras/informe_compras.html', context)

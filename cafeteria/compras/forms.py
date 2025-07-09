@@ -3,7 +3,6 @@ from django import forms
 from .models import Proveedor, Compra,TipoCompra
 
 
-
 class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedor
@@ -166,3 +165,58 @@ class TipoCompraForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['descripcion'].required = False
+        
+        
+        
+#informe de compras
+
+
+
+class FiltroComprasForm(forms.Form):
+    fecha_inicio = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha inicio'
+    )
+    fecha_fin = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha fin'
+    )
+    proveedor = forms.ModelChoiceField(
+        queryset=Proveedor.objects.all(),
+        required=False,
+        empty_label="Todos los proveedores",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    tipo_compra = forms.ModelChoiceField(
+        queryset=TipoCompra.objects.all(),
+        required=False,
+        empty_label="Todos los tipos",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    tipo_documento = forms.ChoiceField(
+        choices=[('', 'Todos los documentos')] + list(Compra.TIPO_DOCUMENTO_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    destino = forms.CharField(
+        required=False,
+        max_length=100,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Buscar por destino'}),
+        label='Destino'
+    )
+    total_min = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        label='Total mínimo'
+    )
+    total_max = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        label='Total máximo'
+    )

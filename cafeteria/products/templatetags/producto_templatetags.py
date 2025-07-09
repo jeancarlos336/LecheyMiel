@@ -57,3 +57,12 @@ def endswith(value, arg):
     Verifica si el valor termina con el argumento
     """
     return value.endswith(arg)
+
+
+@register.filter(name='div')
+def div(value, arg):
+    """Divide value por arg"""
+    try:
+        return float(value) / float(arg)
+    except (ValueError, ZeroDivisionError, TypeError):
+        return 0

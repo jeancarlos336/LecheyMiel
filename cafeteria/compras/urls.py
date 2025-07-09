@@ -34,4 +34,5 @@ urlpatterns = [
     
     #reportes
     path('reportes/balance-anual/', BalanceAnualView.as_view(), name='balance_anual'),
+    path('informe/', views.informe_compras, name='informe_compras'),
 ]
