@@ -1740,14 +1740,8 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                             estado=estado_detalle
                         )
                         detalles.append(detalle)
-                        
-                        # Actualizar stock si el producto tiene control de stock
-                        stock_producto = getattr(producto, 'stock', None)
-                        if stock_producto:
-                            stock_producto.cantidad_actual -= cantidad
-                            stock_producto.save()
-                            print(f"DEBUG: Stock actualizado para {producto.nombre}. Nuevo stock: {stock_producto.cantidad_actual}")
-                        
+                       
+                                            
                     except Exception as e:
                         print(f"DEBUG: Error al procesar item {producto.nombre}: {e}")
                         raise Exception(f"Error al procesar {producto.nombre}: {str(e)}")
