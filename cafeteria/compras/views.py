@@ -21,6 +21,8 @@ from django.core.paginator import Paginator
 from .forms import FiltroComprasForm
 import json
 
+
+
 # Vistas para Proveedor
 class ProveedorListView(ListView):
     model = Proveedor
@@ -71,18 +73,16 @@ class ProveedorDeleteView(LoginRequiredMixin, DeleteView):
 
 
 
-
-
 class CompraListView(ListView):
     model = Compra
     template_name = 'compras/compra_list.html'
     context_object_name = 'compras'
-    paginate_by = 25
-    ordering = ['-fecha']
-
+    paginate_by = 10  # Cambiado de 25 a 15
+    ordering = ['-fecha', '-id']  # Agregado -id para consistencia en ordenamiento
+    
     def get_queryset(self):
         queryset = super().get_queryset().select_related('proveedor', 'tipo_compra')
-
+        
         # Filtros
         proveedor_id = self.request.GET.get('proveedor')
         tipo_doc = self.request.GET.get('tipo_documento')
@@ -92,47 +92,48 @@ class CompraListView(ListView):
         destino = self.request.GET.get('destino')
         monto_min = self.request.GET.get('monto_min')
         monto_max = self.request.GET.get('monto_max')
-
+        
+        # Aplicar filtros
         if proveedor_id:
             queryset = queryset.filter(proveedor_id=proveedor_id)
-
+            
         if tipo_doc:
             queryset = queryset.filter(tipo_documento=tipo_doc)
-
+            
         if tipo_compra_id:
             queryset = queryset.filter(tipo_compra_id=tipo_compra_id)
-
+            
         if fecha_desde:
             try:
                 fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
                 queryset = queryset.filter(fecha__gte=fecha_desde)
             except ValueError:
                 pass
-
+                
         if fecha_hasta:
             try:
                 fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
                 queryset = queryset.filter(fecha__lte=fecha_hasta)
             except ValueError:
                 pass
-
+                
         if destino:
             queryset = queryset.filter(destino__icontains=destino)
-
+            
         if monto_min:
             try:
                 queryset = queryset.filter(total__gte=float(monto_min))
             except ValueError:
                 pass
-
+                
         if monto_max:
             try:
                 queryset = queryset.filter(total__lte=float(monto_max))
             except ValueError:
                 pass
-
+                
         return queryset
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -141,38 +142,59 @@ class CompraListView(ListView):
         context['tipos_documento'] = dict(Compra.TIPO_DOCUMENTO_CHOICES)
         context['tipos_compra'] = TipoCompra.objects.all().order_by('nombre')
         
-        # Datos para los filtros aplicados
+        # Verificar si hay filtros aplicados
         context['has_filters'] = any(
-            key in self.request.GET 
-            for key in ['proveedor', 'tipo_documento', 'tipo_compra', 
-                       'fecha_desde', 'fecha_hasta', 'destino', 
+            key in self.request.GET and self.request.GET[key]
+            for key in ['proveedor', 'tipo_documento', 'tipo_compra',
+                       'fecha_desde', 'fecha_hasta', 'destino',
                        'monto_min', 'monto_max']
         )
         
         # Obtener los objetos completos para mostrar en los filtros aplicados
         proveedor_id = self.request.GET.get('proveedor')
         if proveedor_id:
-            context['selected_proveedor'] = Proveedor.objects.filter(id=proveedor_id).first()
+            try:
+                context['selected_proveedor'] = Proveedor.objects.get(id=proveedor_id)
+            except (Proveedor.DoesNotExist, ValueError):
+                pass
         
         tipo_compra_id = self.request.GET.get('tipo_compra')
         if tipo_compra_id:
-            context['selected_tipo_compra'] = TipoCompra.objects.filter(id=tipo_compra_id).first()
+            try:
+                context['selected_tipo_compra'] = TipoCompra.objects.get(id=tipo_compra_id)
+            except (TipoCompra.DoesNotExist, ValueError):
+                pass
         
-        # Calcular total de compras filtradas
-        queryset = self.get_queryset()
-        context['total_compras'] = queryset.aggregate(total=Sum('total'))['total'] or 0
+        # Calcular total de compras filtradas (solo del queryset filtrado, no paginado)
+        queryset_total = self.get_queryset()
+        context['total_compras'] = queryset_total.aggregate(total=Sum('total'))['total'] or 0
+        context['total_registros'] = queryset_total.count()
         
-        # Configuración de paginación
+        # Información de paginación mejorada
         page_obj = context.get('page_obj')
         if page_obj:
-            context['compras'] = page_obj.object_list
-            # Agregar índices de elementos mostrados
-            start_index = page_obj.start_index()
-            end_index = page_obj.end_index()
-            context['compras'].start_index = start_index
-            context['compras'].end_index = end_index
+            # Agregar información adicional para el template
+            context['showing_from'] = page_obj.start_index()
+            context['showing_to'] = page_obj.end_index()
+            context['total_items'] = page_obj.paginator.count
+            
+            # Mejorar el rango de páginas mostradas
+            current_page = page_obj.number
+            total_pages = page_obj.paginator.num_pages
+            
+            # Mostrar un rango de páginas alrededor de la página actual
+            page_range_start = max(1, current_page - 2)
+            page_range_end = min(total_pages + 1, current_page + 3)
+            context['page_range'] = range(page_range_start, page_range_end)
+            
+            # Información para mostrar "..." en la paginación
+            context['show_first'] = page_range_start > 1
+            context['show_last'] = page_range_end <= total_pages
+            context['show_first_ellipsis'] = page_range_start > 2
+            context['show_last_ellipsis'] = page_range_end < total_pages
         
         return context
+
 
 class CompraDetailView(DetailView):
     model = Compra
