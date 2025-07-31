@@ -2858,49 +2858,76 @@ def ranking_productos_data(request):
         
 ##########INFORMES DE PAGOS
 
-
-
 def informe_pagos(request):
-    desde = hasta = None
+    # Inicialización de variables
+    desde = request.GET.get('desde')
+    hasta = request.GET.get('hasta')
     resumen_mensual = []
-
-    if request.method == 'GET':
-        desde = request.GET.get('desde')
-        hasta = request.GET.get('hasta')
-
-        if desde and hasta:
-            try:
-                desde_dt = datetime.strptime(desde, "%Y-%m-%d")
-                hasta_dt = datetime.strptime(hasta, "%Y-%m-%d")
-
-                pagos = Pago.objects.filter(fecha__date__gte=desde_dt, fecha__date__lte=hasta_dt)
-
-                # Agrupar por mes
-                pagos_por_mes = (
-                    pagos
-                    .annotate(mes=TruncMonth('fecha'))
-                    .values('mes')
-                    .annotate(
-                        total_venta=Sum('total_venta'),
-                        total_costo=Sum('costo_total'),
-                        total_ganancia=Sum('ganancia')
-                    )
-                    .order_by('mes')
+    error = None
+    
+    if request.method == 'GET' and desde and hasta:
+        try:
+            # Validación y conversión de fechas
+            desde_dt = datetime.strptime(desde, "%Y-%m-%d").date()
+            hasta_dt = datetime.strptime(hasta, "%Y-%m-%d").date()
+           
+            # Validación adicional de fechas
+            if desde_dt > hasta_dt:
+                raise ValueError("La fecha de inicio no puede ser mayor a la fecha final")
+            
+            # Consulta optimizada con debug
+            pagos_por_mes = (
+                Pago.objects
+                .filter(fecha__date__gte=desde_dt, fecha__date__lte=hasta_dt)
+                .annotate(mes=TruncMonth('fecha'))
+                .values('mes')
+                .annotate(
+                    total_venta=Sum('total_venta'),
+                    total_costo=Sum('costo_total'),
+                    total_ganancia=Sum('ganancia')
                 )
-
-                # Convertir a lista legible
-                for item in pagos_por_mes:
-                    resumen_mensual.append({
-                        'mes': item['mes'].strftime('%B %Y'),  # Ej: "Julio 2025"
-                        'total_venta': item['total_venta'] or 0,
-                        'total_costo': item['total_costo'] or 0,
-                        'total_ganancia': item['total_ganancia'] or 0,
-                    })
-            except Exception as e:
-                print(f"Error: {e}")
-
-    return render(request, 'orders/pedidos/informe_pagos.html', {
+                .order_by('mes')
+            )
+            
+            # Debug: Imprimir la consulta SQL generada
+            print("SQL Query:", pagos_por_mes.query)
+            print("Resultados encontrados:", pagos_por_mes.count())
+            
+            # Procesamiento de resultados con más debug
+            resumen_mensual = []
+            for item in pagos_por_mes:
+                # Debug: imprimir cada item
+                print(f"Item procesado: {item}")
+                
+                resumen_data = {
+                    'mes': item['mes'].strftime('%B %Y').capitalize() if item['mes'] else 'Sin fecha',
+                    'mes_iso': item['mes'].strftime('%Y-%m') if item['mes'] else '',  # Para ordenamiento
+                    'total_venta': float(item['total_venta']) if item['total_venta'] is not None else 0.0,
+                    'total_costo': float(item['total_costo']) if item['total_costo'] is not None else 0.0,
+                    'total_ganancia': float(item['total_ganancia']) if item['total_ganancia'] is not None else 0.0,
+                }
+                resumen_mensual.append(resumen_data)
+            
+            # Debug final
+            print(f"Resumen final: {len(resumen_mensual)} meses procesados")
+            for r in resumen_mensual:
+                print(f"- {r['mes']}: Ventas={r['total_venta']}, Costos={r['total_costo']}, Ganancia={r['total_ganancia']}")
+                
+        except ValueError as ve:
+            error = f"Error en las fechas: {str(ve)}"
+            print(f"Error de validación: {ve}")
+        except Exception as e:
+            error = f"Error al generar el informe: {str(e)}"
+            # Loggear el error completo para diagnóstico
+            print(f"Error completo: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    context = {
         'resumen_mensual': resumen_mensual,
         'desde': desde,
-        'hasta': hasta
-    })
+        'hasta': hasta,
+        'error': error
+    }
+    
+    return render(request, 'orders/pedidos/informe_pagos.html', context)

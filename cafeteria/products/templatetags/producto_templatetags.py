@@ -66,3 +66,40 @@ def div(value, arg):
         return float(value) / float(arg)
     except (ValueError, ZeroDivisionError, TypeError):
         return 0
+
+@register.filter(name='last_item')
+def last_item(value):
+    """
+    Obtiene el último elemento de una lista o queryset
+    Uso en plantilla: {{ lista|last_item }}
+    """
+    try:
+        if value:
+            return value[-1] if hasattr(value, '__getitem__') else list(value)[-1]
+        return None
+    except (IndexError, TypeError):
+        return None
+
+@register.filter(name='first_item')
+def first_item(value):
+    """
+    Obtiene el primer elemento de una lista o queryset
+    Uso en plantilla: {{ lista|first_item }}
+    """
+    try:
+        if value:
+            return value[0] if hasattr(value, '__getitem__') else list(value)[0]
+        return None
+    except (IndexError, TypeError):
+        return None
+
+@register.filter(name='safe_attr')
+def safe_attr(obj, attr_name):
+    """
+    Accede de forma segura a un atributo de un objeto
+    Uso en plantilla: {{ objeto|safe_attr:"atributo" }}
+    """
+    try:
+        return getattr(obj, attr_name, None)
+    except AttributeError:
+        return None
