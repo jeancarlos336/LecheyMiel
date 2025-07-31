@@ -1,700 +1,705 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Informe de Pagos</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends 'base.html' %}
+{% load static %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
-            color: #333;
-            line-height: 1.6;
-        }
+{% block title %}Informe de Ventas{% endblock %}
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+{% block extra_css %}
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-        /* Tarjetas superiores */
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f0f2f5;
+        color: #333;
+        line-height: 1.6;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Tarjetas superiores */
+    .cards-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        border: 1px solid #e1e8ed;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .card-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin-right: 15px;
+        color: white;
+    }
+
+    .card-icon.ventas {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .card-icon.costos {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .card-icon.ganancia {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .card-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 15px;
+    }
+
+    .card-value.ventas { color: #667eea; }
+    .card-value.costos { color: #f5576c; }
+    .card-value.ganancia { color: #00f2fe; }
+
+    .card-progress {
+        width: 100%;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .card-progress-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+
+    .card-progress-bar.ventas {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .card-progress-bar.costos {
+        background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .card-progress-bar.ganancia {
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .card-margin {
+        font-size: 14px;
+        color: #718096;
+        font-weight: 600;
+    }
+
+    /* Sección del gráfico */
+    .chart-section {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        border: 1px solid #e1e8ed;
+        margin-bottom: 30px;
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .chart-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a202c;
+    }
+
+    .chart-subtitle {
+        color: #718096;
+        font-size: 1rem;
+        margin-top: 5px;
+    }
+
+    .chart-wrapper {
+        position: relative;
+        height: 400px;
+        width: 100%;
+    }
+
+    /* Filtros */
+    .filters {
+        background: white;
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        border: 1px solid #e1e8ed;
+    }
+
+    .form-group {
+        display: flex;
+        gap: 20px;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+
+    .form-field {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .form-field label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #4a5568;
+    }
+
+    .form-field input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .form-field input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .error-message {
+        background: #fed7d7;
+        color: #c53030;
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        color: #718096;
+    }
+
+    /* Tarjetas mensuales */
+    .monthly-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .monthly-card {
+        background: white;
+        border-radius: 20px;
+        padding: 25px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        border: 1px solid #e1e8ed;
+    }
+
+    .monthly-card-header {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+
+    .monthly-card-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 5px;
+    }
+
+    .monthly-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .monthly-metric {
+        text-align: center;
+    }
+
+    .monthly-metric-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        margin: 0 auto 10px;
+        color: white;
+    }
+
+    .monthly-metric-icon.ventas {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .monthly-metric-icon.costos {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .monthly-metric-icon.ganancia {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .monthly-metric-value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .monthly-metric-value.ventas { color: #667eea; }
+    .monthly-metric-value.costos { color: #f5576c; }
+    .monthly-metric-value.ganancia { color: #00f2fe; }
+
+    .monthly-metric-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .monthly-margin {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .monthly-margin-label {
+        font-size: 14px;
+        color: #718096;
+        font-weight: 600;
+    }
+
+    .monthly-margin-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a202c;
+    }
+
+    .monthly-progress {
+        width: 100%;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .monthly-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+        border-radius: 3px;
+        transition: width 0.5s ease;
+    }
+
+    @media (max-width: 768px) {
         .cards-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: 1fr;
         }
-
-        .card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid #e1e8ed;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .card-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            margin-right: 15px;
-            color: white;
-        }
-
-        .card-icon.ventas {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .card-icon.costos {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        .card-icon.ganancia {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .card-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #718096;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .card-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 15px;
-        }
-
-        .card-value.ventas { color: #667eea; }
-        .card-value.costos { color: #f5576c; }
-        .card-value.ganancia { color: #00f2fe; }
-
-        .card-progress {
-            width: 100%;
-            height: 8px;
-            background: #e2e8f0;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .card-progress-bar {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s ease;
-        }
-
-        .card-progress-bar.ventas {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .card-progress-bar.costos {
-            background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        .card-progress-bar.ganancia {
-            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .card-margin {
-            font-size: 14px;
-            color: #718096;
-            font-weight: 600;
-        }
-
-        /* Sección del gráfico */
-        .chart-section {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid #e1e8ed;
-            margin-bottom: 30px;
-        }
-
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .chart-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1a202c;
-        }
-
-        .chart-subtitle {
-            color: #718096;
-            font-size: 1rem;
-            margin-top: 5px;
-        }
-
-        .chart-wrapper {
-            position: relative;
-            height: 400px;
-            width: 100%;
-        }
-
-        /* Filtros */
-        .filters {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid #e1e8ed;
-        }
-
-        .form-group {
-            display: flex;
-            gap: 20px;
-            align-items: end;
-            flex-wrap: wrap;
-        }
-
-        .form-field {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .form-field label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #4a5568;
-        }
-
-        .form-field input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .form-field input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .error-message {
-            background: #fed7d7;
-            color: #c53030;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 60px 20px;
-            color: #718096;
-        }
-
-        /* Tarjetas mensuales */
+        
         .monthly-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: 1fr;
         }
-
-        .monthly-card {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid #e1e8ed;
+        
+        .form-group {
+            flex-direction: column;
         }
-
-        .monthly-card-header {
-            text-align: center;
-            margin-bottom: 25px;
+        
+        .chart-wrapper {
+            height: 300px;
         }
+    }
+</style>
+{% endblock %}
 
-        .monthly-card-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 5px;
-        }
-
-        .monthly-metrics {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .monthly-metric {
-            text-align: center;
-        }
-
-        .monthly-metric-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            margin: 0 auto 10px;
-            color: white;
-        }
-
-        .monthly-metric-icon.ventas {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .monthly-metric-icon.costos {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        .monthly-metric-icon.ganancia {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .monthly-metric-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .monthly-metric-value.ventas { color: #667eea; }
-        .monthly-metric-value.costos { color: #f5576c; }
-        .monthly-metric-value.ganancia { color: #00f2fe; }
-
-        .monthly-metric-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #718096;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .monthly-margin {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .monthly-margin-label {
-            font-size: 14px;
-            color: #718096;
-            font-weight: 600;
-        }
-
-        .monthly-margin-value {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1a202c;
-        }
-
-        .monthly-progress {
-            width: 100%;
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .monthly-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-            border-radius: 3px;
-            transition: width 0.5s ease;
-        }
-
-        @media (max-width: 768px) {
-            .cards-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .monthly-cards {
-                grid-template-columns: 1fr;
-            }
-            
-            .form-group {
-                flex-direction: column;
-            }
-            
-            .chart-wrapper {
-                height: 300px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Filtros -->
-         <h2 style="font-size: 2rem; font-weight: 700; color: #1a202c; margin-bottom: 20px; text-align: center;">
-    INFORME DE VENTAS </h2>
-        <div class="filters">
-            <form method="GET">
-                <div class="form-group">
-                    <div class="form-field">
-                        <label for="desde">Fecha desde:</label>
-                        <input type="date" id="desde" name="desde" value="{{ desde|default:'' }}" required>
-                    </div>
-                    <div class="form-field">
-                        <label for="hasta">Fecha hasta:</label>
-                        <input type="date" id="hasta" name="hasta" value="{{ hasta|default:'' }}" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        Generar Informe
-                    </button>
+{% block content %}
+<div class="container">
+    <!-- Título -->
+    <h2 style="font-size: 2rem; font-weight: 700; color: #1a202c; margin-bottom: 20px; text-align: center;">
+        INFORME DE VENTAS
+    </h2>
+    
+    <!-- Filtros -->
+    <div class="filters">
+        <form method="GET">
+            <div class="form-group">
+                <div class="form-field">
+                    <label for="desde">Fecha desde:</label>
+                    <input type="date" id="desde" name="desde" value="{{ desde|default:'' }}" required>
                 </div>
-            </form>
-        </div>
-
-        <!-- Mensajes de error -->
-        {% if error %}
-        <div class="error-message">
-            <strong>Error:</strong> {{ error }}
-        </div>
-        {% endif %}
-
-        <!-- Tarjetas de resumen -->
-        {% if resumen_mensual %}
-        <div class="cards-row">
-            <!-- Tarjeta Ventas -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon ventas">$</div>
-                    <div>
-                        <div class="card-title">VENTAS</div>
-                    </div>
+                <div class="form-field">
+                    <label for="hasta">Fecha hasta:</label>
+                    <input type="date" id="hasta" name="hasta" value="{{ hasta|default:'' }}" required>
                 </div>
-                <div class="card-value ventas" id="totalVentas">$0</div>
-                <div class="card-progress">
-                    <div class="card-progress-bar ventas" id="progressVentas"></div>
-                </div>
-                <div class="card-margin">Margen <span id="margenVentas">0%</span></div>
+                <button type="submit" class="btn btn-primary">
+                    Generar Informe
+                </button>
             </div>
-
-            <!-- Tarjeta Costos -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon costos">📊</div>
-                    <div>
-                        <div class="card-title">COSTOS</div>
-                    </div>
-                </div>
-                <div class="card-value costos" id="totalCostos">$0</div>
-                <div class="card-progress">
-                    <div class="card-progress-bar costos" id="progressCostos"></div>
-                </div>
-                <div class="card-margin">Margen <span id="margenCostos">0%</span></div>
-            </div>
-
-            <!-- Tarjeta Ganancias -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon ganancia">📈</div>
-                    <div>
-                        <div class="card-title">GANANCIA</div>
-                    </div>
-                </div>
-                <div class="card-value ganancia" id="totalGanancias">$0</div>
-                <div class="card-progress">
-                    <div class="card-progress-bar ganancia" id="progressGanancias"></div>
-                </div>
-                <div class="card-margin">Margen <span id="margenGanancias">0%</span></div>
-            </div>
-        </div>
-
-        <!-- Tarjetas mensuales individuales -->
-        <div class="monthly-cards" id="monthlyCards">
-            <!-- Las tarjetas mensuales se generarán dinámicamente aquí -->
-        </div>
-
-        <!-- Gráfico Comparativo -->
-        <div class="chart-section">
-            <div class="chart-header">
-                <div>
-                    <div class="chart-title">📊 Comparativo</div>
-                    <div class="chart-subtitle">Análisis mensual de ventas, costos y ganancias</div>
-                </div>
-            </div>
-            <div class="chart-wrapper">
-                <canvas id="comparativoChart"></canvas>
-            </div>
-        </div>
-        {% else %}
-        <div class="chart-section">
-            <div class="no-data">
-                <h3>No hay datos disponibles</h3>
-                <p>Selecciona un rango de fechas para ver el informe</p>
-            </div>
-        </div>
-        {% endif %}
+        </form>
     </div>
 
-    <script>
-        // Datos del backend
-        const resumenData = {{ resumen_mensual|safe }};
+    <!-- Mensajes de error -->
+    {% if error %}
+    <div class="error-message">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Tarjetas de resumen -->
+    {% if resumen_mensual %}
+    <div class="cards-row">
+        <!-- Tarjeta Ventas -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon ventas">$</div>
+                <div>
+                    <div class="card-title">VENTAS</div>
+                </div>
+            </div>
+            <div class="card-value ventas" id="totalVentas">$0</div>
+            <div class="card-progress">
+                <div class="card-progress-bar ventas" id="progressVentas"></div>
+            </div>
+            <div class="card-margin">Margen <span id="margenVentas">0%</span></div>
+        </div>
+
+        <!-- Tarjeta Costos -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon costos">📊</div>
+                <div>
+                    <div class="card-title">COSTOS</div>
+                </div>
+            </div>
+            <div class="card-value costos" id="totalCostos">$0</div>
+            <div class="card-progress">
+                <div class="card-progress-bar costos" id="progressCostos"></div>
+            </div>
+            <div class="card-margin">Margen <span id="margenCostos">0%</span></div>
+        </div>
+
+        <!-- Tarjeta Ganancias -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon ganancia">📈</div>
+                <div>
+                    <div class="card-title">GANANCIA</div>
+                </div>
+            </div>
+            <div class="card-value ganancia" id="totalGanancias">$0</div>
+            <div class="card-progress">
+                <div class="card-progress-bar ganancia" id="progressGanancias"></div>
+            </div>
+            <div class="card-margin">Margen <span id="margenGanancias">0%</span></div>
+        </div>
+    </div>
+
+    <!-- Tarjetas mensuales individuales -->
+    <div class="monthly-cards" id="monthlyCards">
+        <!-- Las tarjetas mensuales se generarán dinámicamente aquí -->
+    </div>
+
+    <!-- Gráfico Comparativo -->
+    <div class="chart-section">
+        <div class="chart-header">
+            <div>
+                <div class="chart-title">📊 Comparativo</div>
+                <div class="chart-subtitle">Análisis mensual de ventas, costos y ganancias</div>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="comparativoChart"></canvas>
+        </div>
+    </div>
+    {% else %}
+    <div class="chart-section">
+        <div class="no-data">
+            <h3>No hay datos disponibles</h3>
+            <p>Selecciona un rango de fechas para ver el informe</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js ya está cargado en base.html -->
+<script>
+    // Datos del backend
+    const resumenData = {{ resumen_mensual|safe }};
+    
+    if (resumenData && resumenData.length > 0) {
+        // Calcular totales
+        let totalVentas = 0;
+        let totalCostos = 0;
+        let totalGanancias = 0;
         
-        if (resumenData && resumenData.length > 0) {
-            // Calcular totales
-            let totalVentas = 0;
-            let totalCostos = 0;
-            let totalGanancias = 0;
+        resumenData.forEach(item => {
+            totalVentas += item.total_venta;
+            totalCostos += item.total_costo;
+            totalGanancias += item.total_ganancia;
+        });
+
+        // Actualizar tarjetas
+        document.getElementById('totalVentas').textContent = '$' + totalVentas.toLocaleString('es-CL');
+        document.getElementById('totalCostos').textContent = '$' + totalCostos.toLocaleString('es-CL');
+        document.getElementById('totalGanancias').textContent = '$' + totalGanancias.toLocaleString('es-CL');
+
+        // Calcular máximo para las barras de progreso
+        const maxValue = Math.max(totalVentas, totalCostos, totalGanancias);
+        
+        // Actualizar barras de progreso
+        document.getElementById('progressVentas').style.width = (totalVentas / maxValue * 100) + '%';
+        document.getElementById('progressCostos').style.width = (totalCostos / maxValue * 100) + '%';
+        document.getElementById('progressGanancias').style.width = (totalGanancias / maxValue * 100) + '%';
+
+        // Calcular márgenes
+        const margenVentas = totalVentas > 0 ? ((totalGanancias / totalVentas) * 100).toFixed(1) : 0;
+        const margenCostos = totalCostos > 0 ? ((totalCostos / totalVentas) * 100).toFixed(1) : 0;
+        const margenGanancias = totalVentas > 0 ? ((totalGanancias / totalVentas) * 100).toFixed(1) : 0;
+
+        document.getElementById('margenVentas').textContent = margenVentas + '%';
+        document.getElementById('margenCostos').textContent = margenCostos + '%';
+        document.getElementById('margenGanancias').textContent = margenGanancias + '%';
+
+        // Crear tarjetas mensuales
+        const monthlyCardsContainer = document.getElementById('monthlyCards');
+        monthlyCardsContainer.innerHTML = '';
+
+        resumenData.forEach((item, index) => {
+            const margenMensual = item.total_venta > 0 ? ((item.total_ganancia / item.total_venta) * 100).toFixed(0) : 0;
             
-            resumenData.forEach(item => {
-                totalVentas += item.total_venta;
-                totalCostos += item.total_costo;
-                totalGanancias += item.total_ganancia;
-            });
-
-            // Actualizar tarjetas
-            document.getElementById('totalVentas').textContent = '$' + totalVentas.toLocaleString('es-CL');
-            document.getElementById('totalCostos').textContent = '$' + totalCostos.toLocaleString('es-CL');
-            document.getElementById('totalGanancias').textContent = '$' + totalGanancias.toLocaleString('es-CL');
-
-            // Calcular máximo para las barras de progreso
-            const maxValue = Math.max(totalVentas, totalCostos, totalGanancias);
-            
-            // Actualizar barras de progreso
-            document.getElementById('progressVentas').style.width = (totalVentas / maxValue * 100) + '%';
-            document.getElementById('progressCostos').style.width = (totalCostos / maxValue * 100) + '%';
-            document.getElementById('progressGanancias').style.width = (totalGanancias / maxValue * 100) + '%';
-
-            // Calcular márgenes
-            const margenVentas = totalVentas > 0 ? ((totalGanancias / totalVentas) * 100).toFixed(1) : 0;
-            const margenCostos = totalCostos > 0 ? ((totalCostos / totalVentas) * 100).toFixed(1) : 0;
-            const margenGanancias = totalVentas > 0 ? ((totalGanancias / totalVentas) * 100).toFixed(1) : 0;
-
-            document.getElementById('margenVentas').textContent = margenVentas + '%';
-            document.getElementById('margenCostos').textContent = margenCostos + '%';
-            document.getElementById('margenGanancias').textContent = margenGanancias + '%';
-
-            // Crear tarjetas mensuales
-            const monthlyCardsContainer = document.getElementById('monthlyCards');
-            monthlyCardsContainer.innerHTML = '';
-
-            resumenData.forEach((item, index) => {
-                const margenMensual = item.total_venta > 0 ? ((item.total_ganancia / item.total_venta) * 100).toFixed(0) : 0;
-                
-                const monthlyCard = `
-                    <div class="monthly-card">
-                        <div class="monthly-card-header">
-                            <div class="monthly-card-title">${item.mes}</div>
+            const monthlyCard = `
+                <div class="monthly-card">
+                    <div class="monthly-card-header">
+                        <div class="monthly-card-title">${item.mes}</div>
+                    </div>
+                    
+                    <div class="monthly-metrics">
+                        <div class="monthly-metric">
+                            <div class="monthly-metric-icon ventas">$</div>
+                            <div class="monthly-metric-value ventas">${item.total_venta.toLocaleString('es-CL')}</div>
+                            <div class="monthly-metric-label">VENTAS</div>
                         </div>
                         
-                        <div class="monthly-metrics">
-                            <div class="monthly-metric">
-                                <div class="monthly-metric-icon ventas">$</div>
-                                <div class="monthly-metric-value ventas">${item.total_venta.toLocaleString('es-CL')}</div>
-                                <div class="monthly-metric-label">VENTAS</div>
-                            </div>
-                            
-                            <div class="monthly-metric">
-                                <div class="monthly-metric-icon costos">📊</div>
-                                <div class="monthly-metric-value costos">${item.total_costo.toLocaleString('es-CL')}</div>
-                                <div class="monthly-metric-label">COSTOS</div>
-                            </div>
-                            
-                            <div class="monthly-metric">
-                                <div class="monthly-metric-icon ganancia">📈</div>
-                                <div class="monthly-metric-value ganancia">${item.total_ganancia.toLocaleString('es-CL')}</div>
-                                <div class="monthly-metric-label">GANANCIA</div>
-                            </div>
+                        <div class="monthly-metric">
+                            <div class="monthly-metric-icon costos">📊</div>
+                            <div class="monthly-metric-value costos">${item.total_costo.toLocaleString('es-CL')}</div>
+                            <div class="monthly-metric-label">COSTOS</div>
                         </div>
                         
-                        <div class="monthly-margin">
-                            <span class="monthly-margin-label">Margen</span>
-                            <span class="monthly-margin-value">${margenMensual}%</span>
-                        </div>
-                        
-                        <div class="monthly-progress">
-                            <div class="monthly-progress-bar" style="width: ${margenMensual}%"></div>
+                        <div class="monthly-metric">
+                            <div class="monthly-metric-icon ganancia">📈</div>
+                            <div class="monthly-metric-value ganancia">${item.total_ganancia.toLocaleString('es-CL')}</div>
+                            <div class="monthly-metric-label">GANANCIA</div>
                         </div>
                     </div>
-                `;
-                
-                monthlyCardsContainer.innerHTML += monthlyCard;
-            });
-
-            // Crear gráfico de barras comparativo
-            const ctx = document.getElementById('comparativoChart').getContext('2d');
+                    
+                    <div class="monthly-margin">
+                        <span class="monthly-margin-label">Margen</span>
+                        <span class="monthly-margin-value">${margenMensual}%</span>
+                    </div>
+                    
+                    <div class="monthly-progress">
+                        <div class="monthly-progress-bar" style="width: ${margenMensual}%"></div>
+                    </div>
+                </div>
+            `;
             
-            const labels = resumenData.map(item => item.mes);
-            const ventasData = resumenData.map(item => item.total_venta);
-            const costosData = resumenData.map(item => item.total_costo);
-            const gananciasData = resumenData.map(item => item.total_ganancia);
+            monthlyCardsContainer.innerHTML += monthlyCard;
+        });
 
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Ventas',
-                            data: ventasData,
-                            backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                            borderColor: '#667eea',
-                            borderWidth: 2,
-                            borderRadius: 8,
-                            borderSkipped: false,
-                        },
-                        {
-                            label: 'Costos',
-                            data: costosData,
-                            backgroundColor: 'rgba(245, 87, 108, 0.8)',
-                            borderColor: '#f5576c',
-                            borderWidth: 2,
-                            borderRadius: 8,
-                            borderSkipped: false,
-                        },
-                        {
-                            label: 'Ganancias',
-                            data: gananciasData,
-                            backgroundColor: 'rgba(0, 242, 254, 0.8)',
-                            borderColor: '#00f2fe',
-                            borderWidth: 2,
-                            borderRadius: 8,
-                            borderSkipped: false,
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20,
-                                font: {
-                                    size: 14,
-                                    weight: '600'
-                                }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleColor: '#ffffff',
-                            bodyColor: '#ffffff',
-                            borderColor: '#667eea',
-                            borderWidth: 1,
-                            cornerRadius: 12,
-                            displayColors: true,
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.parsed.y;
-                                    return context.dataset.label + ': $' + value.toLocaleString('es-CL');
-                                }
-                            }
-                        }
+        // Crear gráfico de barras comparativo
+        const ctx = document.getElementById('comparativoChart').getContext('2d');
+        
+        const labels = resumenData.map(item => item.mes);
+        const ventasData = resumenData.map(item => item.total_venta);
+        const costosData = resumenData.map(item => item.total_costo);
+        const gananciasData = resumenData.map(item => item.total_ganancia);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Ventas',
+                        data: ventasData,
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
                     },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Período',
-                                font: {
-                                    size: 14,
-                                    weight: '600'
-                                }
-                            },
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Monto ($)',
-                                font: {
-                                    size: 14,
-                                    weight: '600'
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                font: {
-                                    size: 12
-                                },
-                                callback: function(value, index, values) {
-                                    return '$' + value.toLocaleString('es-CL');
-                                }
-                            }
-                        }
+                    {
+                        label: 'Costos',
+                        data: costosData,
+                        backgroundColor: 'rgba(245, 87, 108, 0.8)',
+                        borderColor: '#f5576c',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
                     },
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
+                    {
+                        label: 'Ganancias',
+                        data: gananciasData,
+                        backgroundColor: 'rgba(0, 242, 254, 0.8)',
+                        borderColor: '#00f2fe',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
                     }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: '#667eea',
+                        borderWidth: 1,
+                        cornerRadius: 12,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                return context.dataset.label + ': $' + value.toLocaleString('es-CL');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Período',
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        },
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Monto ($)',
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            },
+                            callback: function(value, index, values) {
+                                return '$' + value.toLocaleString('es-CL');
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
                 }
-            });
-        }
-    </script>
-</body>
-</html>
+            }
+        });
+    }
+</script>
+{% endblock %}
