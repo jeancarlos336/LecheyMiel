@@ -71,9 +71,10 @@
                             </thead>
                             <tbody>
                                 {% for detalle in pedido_data.detalles %}
+                                
                                 <tr class="item-row" data-item-id="{{ detalle.id }}" 
                                     data-estado="{{ detalle.estado }}"
-                                    data-start-time="{{ detalle.hora_solicitud|date:'c' }}">
+                                    data-start-time="{{ detalle.hora_solicitud|date:'c' }}">    
                                     <td class="text-start">
                                         {{ detalle.producto.nombre }}
                                         {% if detalle.notas %}
@@ -148,5 +149,7 @@
 {% endblock %}
 
 {% block javascript %}
+<!-- 🔥 CRÍTICO: Cargar en este orden -->
+<script src="{% static 'js/preparacion-init.js' %}"></script>
 <script src="{% static 'js/preparacion.js' %}"></script>
 {% endblock %}

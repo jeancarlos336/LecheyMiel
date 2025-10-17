@@ -125,17 +125,26 @@ def tomar_pedido(request, mesa_id):
     except TipoOrden.DoesNotExist:
         messages.error(request, "Error: No existe el tipo de orden LOCAL")
         return redirect('orders:seleccionar_mesa')
-   
+       
     # Permitir acceso si la mesa está disponible O si ya tiene un pedido pendiente/en preparación
+
+
     pedido_existente = Pedido.objects.filter(
-        mesa=mesa,
-        estado__in=['pendiente', 'en_preparacion']
+        mesa=mesa
+    ).exclude(
+        estado__in=['cancelado', 'entregado']
+    ).exclude(
+        pagos__isnull=False
     ).first()
-    
-    # Solo verificar disponibilidad si no hay un pedido en curso
-    if not pedido_existente and not mesa.esta_disponible and mesa.estado != 'reservada':
+
+    # Solo bloquear si no hay pedido existente Y la mesa no está disponible
+
+    if not pedido_existente and mesa.estado not in ['disponible', 'ocupada', 'reservada']:
         messages.error(request, f"La Mesa {mesa.numero} no está disponible actualmente")
         return redirect('orders:seleccionar_mesa')
+    
+    # NUEVA VALIDACIÓN: Si hay pedido existente, permitir acceso sin importar estado
+    # Esto permite editar pedidos en mesas ocupadas
     
     try:
         mesero = Usuario.objects.get(username=request.user.username)
