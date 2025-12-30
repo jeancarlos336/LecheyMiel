@@ -27,6 +27,7 @@ from django.urls import reverse
 from django.db.models.functions import TruncMonth
 import calendar
 
+
 #trabajo con las mesas
 @login_required
 def lista_mesas(request):
@@ -536,7 +537,6 @@ def lista_pedidos_pendientes(request):
     return render(request, 'orders/pedidos/lista_pedidos_pendientes.html', context)
 
 
-
 @login_required
 def todos_los_pedidos(request):
     # Obtener parámetros de búsqueda
@@ -545,8 +545,13 @@ def todos_los_pedidos(request):
     fecha_hasta = request.GET.get('fecha_hasta', '')
     mesa_filtro = request.GET.get('mesa', '')
     
-    # Comenzar con todos los pedidos
-    pedidos = Pedido.objects.all()
+    # Comenzar con todos los pedidos optimizados
+    pedidos = Pedido.objects.select_related(
+        'mesa',
+        'tipo_orden',
+        'mesero',
+        'cajero'
+    ).prefetch_related('detalles__producto').all()
     
     # Aplicar filtro de búsqueda general
     if query:
@@ -555,7 +560,6 @@ def todos_los_pedidos(request):
             Q(nombre_cliente__icontains=query) |
             Q(mesa__numero__icontains=query)
         )
-    
     
     # Filtro por mesa
     if mesa_filtro:
@@ -579,17 +583,23 @@ def todos_los_pedidos(request):
     # Ordenar de más reciente a más antiguo
     pedidos = pedidos.order_by('-fecha_creacion')
     
+    # Obtener mesas únicas para el filtro (optimizado)
+    mesas_disponibles = Mesa.objects.filter(
+        pedido__isnull=False
+    ).values_list('numero', flat=True).distinct().order_by('numero')
     
-    # Obtener mesas únicas para el filtro
-    mesas_disponibles = Pedido.objects.values_list('mesa__numero', flat=True).distinct().order_by('mesa__numero')
+    # Paginación (50 pedidos por página)
+    paginator = Paginator(pedidos, 50)
+    page = request.GET.get('page', 1)
+    pedidos_paginated = paginator.get_page(page)
     
     context = {
-        'pedidos': pedidos,
+        'pedidos': pedidos_paginated,
         'query': query,        
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,        
         'mesas_disponibles': mesas_disponibles,
-        'total_resultados': pedidos.count(),
+        'total_resultados': paginator.count,
     }
     return render(request, 'orders/pedidos/todos_pedidos.html', context)
 
