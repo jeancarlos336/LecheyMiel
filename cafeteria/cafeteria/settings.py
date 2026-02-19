@@ -214,17 +214,17 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ===============================
-# CONFIGURACIÓN ESPECÍFICA XPRINTER XP-A160H
+# CONFIGURACIÓN ESPECÍFICA XPRINTER SPRT-80mm
 # ===============================
 
-# IP de la impresora Xprinter XP-A160H (⚠️ CAMBIAR POR TU IP REAL)
+# IP de la impresora Xprinter SPRT-80mm (⚠️ CAMBIAR POR TU IP REAL)
 PRINTER_IP = '10.201.71.207'  # ⚠️ CAMBIAR POR TU IP REAL
 PRINTER_PORT = 9100
 PRINTER_TIMEOUT = 15
 
-# Configuración completa para XP-A160H
+# Configuración completa para SPRT-80mm
 XPRINTER_CONFIG = {
-    'model': 'XP-A160H',
+    'model': 'SPRT-80mm',
     'manufacturer': 'Xprinter',
     
     # Especificaciones técnicas

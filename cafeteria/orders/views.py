@@ -242,7 +242,6 @@ def tomar_pedido(request, mesa_id):
                         )
 
                     # NUEVA LÓGICA: Si el producto NO es de cocina, marcarlo automáticamente como entregado
-                    if producto.categoria.area_preparacion.nombre != AreaPreparacion.COCINA:
                         nuevo_detalle.estado = 'entregado'
                         nuevo_detalle.hora_listo = timezone.now()
                         nuevo_detalle.hora_entrega = timezone.now()
@@ -252,7 +251,7 @@ def tomar_pedido(request, mesa_id):
                     
                     mensaje_estado = ""
                     if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
-                        mensaje_estado = "agregado al pedido (requiere preparación en cocina)"
+                        mensaje_estado = "Entregado"
                     else:
                         mensaje_estado = "agregado y marcado como entregado automáticamente"
                     
@@ -1052,7 +1051,7 @@ def completar_pago(request, pedido_id):
         if imprimir_recibo:
             return redirect('orders:imprimir_recibo', pago_id=pago.id)
         
-        return redirect('orders:todos_los_pedidos')
+        return redirect('orders:lista_pedidos_pendientes')
     
     # Si no es POST, redirigir a la página de procesar pago
     return redirect('orders:procesar_pago', pedido_id=pedido.id)
@@ -1345,7 +1344,6 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
                         message = f'Producto {producto.nombre} agregado al pedido'
 
                     # NUEVA LÓGICA: Si el producto NO es de cocina, marcarlo automáticamente como entregado
-                    if producto.categoria.area_preparacion.nombre != AreaPreparacion.COCINA:
                         nuevo_detalle.estado = 'entregado'
                         nuevo_detalle.hora_listo = timezone.now()
                         nuevo_detalle.hora_entrega = timezone.now()
@@ -1356,7 +1354,7 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
                     # Actualizar mensaje según el área de preparación
                     mensaje_estado = ""
                     if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
-                        mensaje_estado = "agregado al pedido (requiere preparación en cocina)"
+                        mensaje_estado = "entregado"
                     else:
                         mensaje_estado = "agregado y marcado como entregado automáticamente"
                     
@@ -2221,12 +2219,8 @@ def generar_ticket_xprinter_a160h(pedido):
     ticket += FEED_LINES(3)  # Avanzar 3 líneas antes del corte
     ticket += PARTIAL_CUT    # Corte parcial (recomendado para XP-A160H)
     
-    # Codificar en UTF-8 con manejo de errores
-    try:
-        return ticket.encode('utf-8')
-    except UnicodeEncodeError:
-        # Fallback a codificación más básica si hay caracteres problemáticos
-        return ticket.encode('latin-1', errors='replace')
+    # Codificar en UTF-8 con manejo de errores   
+    return ticket.encode('latin-1', errors='replace')
 
 def enviar_a_impresora_red(contenido):
     """
@@ -2581,13 +2575,9 @@ def generar_boleta_xprinter_a160h(pedido):
     # ESPACIADO FINAL Y CORTE
     boleta += FEED_LINES(3)  # Avanzar 3 líneas antes del corte
     boleta += PARTIAL_CUT    # Corte parcial
-    
-    # Codificar en UTF-8 con manejo de errores
-    try:
-        return boleta.encode('utf-8')
-    except UnicodeEncodeError:
-        # Fallback a codificación más básica si hay caracteres problemáticos
-        return boleta.encode('latin-1', errors='replace')
+       
+    # Codificar en latin-1 (más compatible con impresoras térmicas chinas)
+    return boleta.encode('latin-1', errors='replace')
     
     
 ##############ELIMINA VENTA COMPLETA############################
