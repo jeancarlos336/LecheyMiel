@@ -2,7 +2,6 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone 
 
-
 class Mesa(models.Model):
     ESTADO_CHOICES = [
         ('disponible', 'Disponible'),

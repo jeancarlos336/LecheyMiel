@@ -1953,12 +1953,12 @@ def recibo_cocina(request, pedido_id):
     # Items de cocina (prioritarios) - solo los que no están entregados
     items_cocina = pedido.items_activos.filter(
         producto__categoria__area_preparacion__nombre='cocina'
-    ).exclude(estado='entregado')
+    )
     
     # Items de otras áreas (bar, barra, etc.) - solo los que no están entregados
     items_otras_areas = pedido.items_activos.exclude(
         producto__categoria__area_preparacion__nombre='cocina'
-    ).exclude(estado='entregado')
+    )
     
     context = {
         'pedido': pedido,
@@ -1979,12 +1979,12 @@ def imprimir_recibo_cocina(request, pedido_id):
     # Items de cocina (prioritarios) - solo los que no están entregados
     items_cocina = pedido.items_activos.filter(
         producto__categoria__area_preparacion__nombre='cocina'
-    ).exclude(estado='entregado')
+    )
     
     # Items de otras áreas (bar, barra, etc.) - solo los que no están entregados
     items_otras_areas = pedido.items_activos.exclude(
         producto__categoria__area_preparacion__nombre='cocina'
-    ).exclude(estado='listo')
+    )
     
     context = {
         'pedido': pedido,
@@ -2082,7 +2082,6 @@ def generar_ticket_xprinter_a160h(pedido):
     """
     Genera el contenido de impresión en formato ESC/POS optimizado para Xprinter XP-A160H
     """
-    # Comandos ESC/POS específicos para XP-A160H
     ESC = chr(27)
     GS = chr(29)
     
@@ -2091,7 +2090,7 @@ def generar_ticket_xprinter_a160h(pedido):
     RESET = ESC + "c" + chr(0)          # Reset completo
     
     # Texto
-    BOLD_ON = ESC + "E" + chr(1)        # Negrita ON (más compatible)
+    BOLD_ON = ESC + "E" + chr(1)        # Negrita ON
     BOLD_OFF = ESC + "E" + chr(0)       # Negrita OFF
     DOUBLE_HEIGHT = ESC + "!" + chr(16) # Altura doble
     DOUBLE_WIDTH = ESC + "!" + chr(32)  # Ancho doble
@@ -2103,36 +2102,33 @@ def generar_ticket_xprinter_a160h(pedido):
     LEFT = ESC + "a" + chr(0)           # Alinear izquierda
     RIGHT = ESC + "a" + chr(2)          # Alinear derecha
     
-    # Corte de papel (específico para XP-A160H con auto-cut)
-    FULL_CUT = GS + "V" + chr(65) + chr(0)      # Corte completo
+    # Corte de papel
     PARTIAL_CUT = GS + "V" + chr(66) + chr(0)   # Corte parcial
     
     # Avance de papel
-    FEED_LINES = lambda n: ESC + "d" + chr(n)   # Avanzar n líneas
+    FEED_LINES = lambda n: ESC + "d" + chr(n)
     
-    # Caracteres especiales para separadores
+    # Separadores - 42 caracteres para ocupar ancho completo de 80mm
+    ANCHO = 42
     SEPARATOR_CHAR = "="
     DASH_CHAR = "-"
     
-    detalles = pedido.detalles.all()  # <- Aquí quitamos cualquier exclude()
-    # Items de cocina
-    # Filtrar solo por área de preparación (sin excluir por estado)
-    items_cocina = detalles.filter(
+    # Items usando items_activos (excluye solo cancelados)
+    items_cocina = pedido.items_activos.filter(
+        producto__categoria__area_preparacion__nombre='cocina'
+    )
+    items_otras_areas = pedido.items_activos.exclude(
         producto__categoria__area_preparacion__nombre='cocina'
     )
     
-    items_otras_areas = detalles.exclude(
-        producto__categoria__area_preparacion__nombre='cocina'
-    )
-    
-    # Construir el ticket optimizado para XP-A160H
-    ticket = INIT + RESET  # Inicializar y resetear
+    # Construir el ticket
+    ticket = INIT + RESET
     
     # ENCABEZADO
     ticket += CENTER + DOUBLE_SIZE + BOLD_ON
     ticket += "ORDEN DE COCINA\n"
     ticket += BOLD_OFF + NORMAL_SIZE
-    ticket += SEPARATOR_CHAR * 32 + "\n"
+    ticket += SEPARATOR_CHAR * ANCHO + "\n"
     
     # INFORMACIÓN DEL PEDIDO
     ticket += DOUBLE_HEIGHT + BOLD_ON
@@ -2143,9 +2139,15 @@ def generar_ticket_xprinter_a160h(pedido):
         ticket += DOUBLE_WIDTH + BOLD_ON
         ticket += f"MESA {pedido.mesa.numero}\n"
         ticket += BOLD_OFF + NORMAL_SIZE
-    
-    ticket += SEPARATOR_CHAR * 32 + "\n"
-    ticket += LEFT  # Cambiar a alineación izquierda
+    else:
+        ticket += BOLD_ON
+        ticket += f"{pedido.tipo_orden.nombre}"
+        if pedido.numero_orden:
+            ticket += f" - {pedido.numero_orden}"
+        ticket += "\n" + BOLD_OFF
+
+    ticket += SEPARATOR_CHAR * ANCHO + "\n"
+    ticket += LEFT
     
     # INFORMACIÓN ADICIONAL
     ticket += f"Fecha: {pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n"
@@ -2153,73 +2155,55 @@ def generar_ticket_xprinter_a160h(pedido):
     if pedido.nombre_cliente:
         ticket += f"Cliente: {pedido.nombre_cliente}\n"
     
-    ticket += SEPARATOR_CHAR * 32 + "\n"
+    ticket += SEPARATOR_CHAR * ANCHO + "\n"
     
     # SECCIÓN COCINA
     if items_cocina:
         ticket += CENTER + BOLD_ON + DOUBLE_HEIGHT
         ticket += "*** COCINA ***\n"
         ticket += BOLD_OFF + NORMAL_SIZE + LEFT
-        ticket += SEPARATOR_CHAR * 32 + "\n"
+        ticket += SEPARATOR_CHAR * ANCHO + "\n"
         
         for item in items_cocina:
-            # Cantidad y producto
             ticket += BOLD_ON + f"{item.cantidad}x "
             ticket += f"{item.producto.nombre.upper()}\n" + BOLD_OFF
             
-            # Precio si está disponible
-            #if hasattr(item, 'precio_unitario') and item.precio_unitario:
-             #   ticket += f"    ${item.precio_unitario:.2f} c/u\n"
-            
-            # Notas
             if item.notas:
                 ticket += f"    NOTAS: {item.notas}\n"
             
-            ticket += DASH_CHAR * 32 + "\n"
+            ticket += DASH_CHAR * ANCHO + "\n"
     
     # SECCIÓN OTRAS ÁREAS
     if items_otras_areas:
         ticket += CENTER + BOLD_ON + DOUBLE_HEIGHT
         ticket += "*** OTRAS AREAS ***\n"
         ticket += BOLD_OFF + NORMAL_SIZE + LEFT
-        ticket += SEPARATOR_CHAR * 32 + "\n"
+        ticket += SEPARATOR_CHAR * ANCHO + "\n"
         
         for item in items_otras_areas:
-            area = item.producto.categoria.area_preparacion.nombre.upper() if item.producto.categoria.area_preparacion else "GENERAL"
+            area = (item.producto.categoria.area_preparacion.nombre.upper() 
+                   if item.producto.categoria.area_preparacion 
+                   else "GENERAL")
             
-            # Cantidad, producto y área
             ticket += BOLD_ON + f"{item.cantidad}x "
             ticket += f"{item.producto.nombre.upper()}\n" + BOLD_OFF
             ticket += f"    [{area}]\n"
             
-            # Precio si está disponible
-            #if hasattr(item, 'precio_unitario') and item.precio_unitario:
-             #   ticket += f"    ${item.precio_unitario:.2f} c/u\n"
-            
-            # Notas
             if item.notas:
                 ticket += f"    NOTAS: {item.notas}\n"
             
-            ticket += DASH_CHAR * 32 + "\n"
-   
-    # TOTALES (si están disponibles)
-    #if hasattr(pedido, 'monto_total') and pedido.monto_total:        
-     #   ticket += SEPARATOR_CHAR * 32 + "\n"
-      #  ticket += RIGHT + BOLD_ON + DOUBLE_HEIGHT
-       # ticket += f"TOTAL: ${pedido.monto_total:.2f}\n"        
-        #ticket += BOLD_OFF + NORMAL_SIZE + LEFT
+            ticket += DASH_CHAR * ANCHO + "\n"
     
     # PIE DE PÁGINA
-    ticket += SEPARATOR_CHAR * 32 + "\n"
+    ticket += SEPARATOR_CHAR * ANCHO + "\n"
     ticket += CENTER
     ticket += f"Impreso: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
     ticket += "Gracias por su pedido\n"
     
     # ESPACIADO FINAL Y CORTE
-    ticket += FEED_LINES(3)  # Avanzar 3 líneas antes del corte
-    ticket += PARTIAL_CUT    # Corte parcial (recomendado para XP-A160H)
+    ticket += FEED_LINES(3)
+    ticket += PARTIAL_CUT
     
-    # Codificar en UTF-8 con manejo de errores   
     return ticket.encode('latin-1', errors='replace')
 
 def enviar_a_impresora_red(contenido):
@@ -2451,12 +2435,11 @@ def enviar_boleta_a_impresora_termica(request, pedido_id):
             'success': False, 
             'message': f'Error: {str(e)}'
         })
-
+        
 def generar_boleta_xprinter_a160h(pedido):
     """
     Genera el contenido de la boleta en formato ESC/POS optimizado para Xprinter XP-A160H
     """
-    # Comandos ESC/POS específicos para XP-A160H
     ESC = chr(27)
     GS = chr(29)
     
@@ -2478,41 +2461,41 @@ def generar_boleta_xprinter_a160h(pedido):
     RIGHT = ESC + "a" + chr(2)          # Alinear derecha
     
     # Corte de papel
-    FULL_CUT = GS + "V" + chr(65) + chr(0)      # Corte completo
     PARTIAL_CUT = GS + "V" + chr(66) + chr(0)   # Corte parcial
     
     # Avance de papel
-    FEED_LINES = lambda n: ESC + "d" + chr(n)   # Avanzar n líneas
+    FEED_LINES = lambda n: ESC + "d" + chr(n)
     
-    # Caracteres especiales para separadores
+    # Separadores - 42 caracteres para ocupar ancho completo de 80mm
+    ANCHO = 42
     SEPARATOR_CHAR = "="
     DASH_CHAR = "-"
     
-    # Filtrar solo los detalles activos
-    detalles_activos = pedido.detalles.exclude(estado='cancelado')
+    # Usar items_activos (consistente con el resto del sistema)
+    detalles_activos = pedido.items_activos
     
     # Calcular el total correcto
     total_correcto = sum(detalle.subtotal for detalle in detalles_activos)
     
-    # Construir la boleta optimizada para XP-A160H
-    boleta = INIT + RESET  # Inicializar y resetear
+    # Construir la boleta
+    boleta = INIT + RESET
     
     # ENCABEZADO
     boleta += CENTER + DOUBLE_SIZE + BOLD_ON
     boleta += "CAFETERIA LECHE Y MIEL\n"
     boleta += BOLD_OFF + NORMAL_SIZE
     boleta += "Colin s/n\n"
-    boleta += SEPARATOR_CHAR * 32 + "\n"
+    boleta += SEPARATOR_CHAR * ANCHO + "\n"
     
     # TÍTULO BOLETA
     boleta += BOLD_ON + DOUBLE_HEIGHT
     boleta += "BOLETA DE PEDIDO\n"
     boleta += BOLD_OFF + NORMAL_SIZE
     boleta += f"{pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n"
-    boleta += SEPARATOR_CHAR * 32 + "\n"
+    boleta += SEPARATOR_CHAR * ANCHO + "\n"
     
     # INFORMACIÓN DEL PEDIDO
-    boleta += LEFT  # Cambiar a alineación izquierda
+    boleta += LEFT
     boleta += BOLD_ON + f"Pedido #: {pedido.id}\n" + BOLD_OFF
     
     if pedido.mesa:
@@ -2526,46 +2509,46 @@ def generar_boleta_xprinter_a160h(pedido):
         if pedido.nombre_cliente:
             boleta += BOLD_ON + f"Cliente: {pedido.nombre_cliente}\n" + BOLD_OFF
     
-    boleta += SEPARATOR_CHAR * 32 + "\n"
+    boleta += SEPARATOR_CHAR * ANCHO + "\n"
     
     # ENCABEZADOS DE TABLA
     boleta += BOLD_ON
-    boleta += f"{'Producto':<20} {'Cant':<4} {'Total':<8}\n"
+    boleta += f"{'Producto':<22} {'Cant':<4} {'Total':<8}\n"
     boleta += BOLD_OFF
-    boleta += DASH_CHAR * 32 + "\n"
+    boleta += DASH_CHAR * ANCHO + "\n"
     
     # DETALLES DE PRODUCTOS
     for detalle in detalles_activos:
-        # Truncar nombre del producto si es muy largo
         nombre_producto = detalle.producto.nombre
-        if len(nombre_producto) > 18:
-            nombre_producto = nombre_producto[:15] + "..."
+        if len(nombre_producto) > 20:
+            nombre_producto = nombre_producto[:17] + "..."
         
-        # Formatear subtotal
+        # Formatear subtotal con punto como separador de miles (Chile)
         subtotal_str = f"${detalle.subtotal:,.0f}".replace(',', '.')
         
-        # Línea del producto
-        boleta += f"{nombre_producto:<20} {detalle.cantidad:<4} {subtotal_str:<8}\n"
+        boleta += f"{nombre_producto:<22} {detalle.cantidad:<4} {subtotal_str:<8}\n"
     
-    boleta += DASH_CHAR * 32 + "\n"
+    boleta += DASH_CHAR * ANCHO + "\n"
     
     # TOTAL
+    total_str = f"TOTAL: ${total_correcto:,.0f}".replace(',', '.')
     boleta += RIGHT + BOLD_ON + DOUBLE_HEIGHT
-    boleta += f"TOTAL: ${total_correcto:,.0f}".replace(',', '.') + "\n"
+    boleta += total_str + "\n"
     boleta += BOLD_OFF + NORMAL_SIZE
     
-    # ESTADO
+    # ESTADO DEL PEDIDO (dinámico, no hardcodeado)
     boleta += CENTER + BOLD_ON
-    boleta += "ESTADO: PENDIENTE DE PAGO\n"
+    estado_pago = pedido.get_estado_pago_display().upper()
+    boleta += f"ESTADO: {estado_pago}\n"
     boleta += BOLD_OFF
     
-    boleta += SEPARATOR_CHAR * 32 + "\n"
+    boleta += SEPARATOR_CHAR * ANCHO + "\n"
     
     # PIE DE PÁGINA
     boleta += LEFT
-    boleta += f"Atendido: {pedido.mesero.get_full_name()[:20]}\n"
+    boleta += f"Atendido: {pedido.mesero.get_full_name()[:25]}\n"
     boleta += CENTER + BOLD_ON
-    boleta += "¡Gracias por su preferencia!\n"
+    boleta += "Gracias por su preferencia!\n"
     boleta += BOLD_OFF
     boleta += f"Boleta generada: {pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n"
     boleta += "\n"
@@ -2573,12 +2556,10 @@ def generar_boleta_xprinter_a160h(pedido):
     boleta += "No valida como comprobante fiscal.\n"
     
     # ESPACIADO FINAL Y CORTE
-    boleta += FEED_LINES(3)  # Avanzar 3 líneas antes del corte
-    boleta += PARTIAL_CUT    # Corte parcial
-       
-    # Codificar en latin-1 (más compatible con impresoras térmicas chinas)
-    return boleta.encode('latin-1', errors='replace')
+    boleta += FEED_LINES(3)
+    boleta += PARTIAL_CUT
     
+    return boleta.encode('latin-1', errors='replace')
     
 ##############ELIMINA VENTA COMPLETA############################
 @login_required
