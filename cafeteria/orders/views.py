@@ -2136,9 +2136,12 @@ def generar_ticket_xprinter_a160h(pedido):
     ticket += BOLD_OFF + NORMAL_SIZE
     
     if pedido.mesa:
-        ticket += DOUBLE_WIDTH + BOLD_ON
+        #ticket += DOUBLE_WIDTH + BOLD_ON
+        ticket += CENTER + DOUBLE_SIZE + BOLD_ON
         ticket += f"MESA {pedido.mesa.numero}\n"
-        ticket += BOLD_OFF + NORMAL_SIZE
+        ticket += BOLD_OFF + NORMAL_SIZE + LEFT  
+        #ticket += f"MESA {pedido.mesa.numero}\n"
+        #ticket += BOLD_OFF + NORMAL_SIZE
     else:
         ticket += BOLD_ON
         ticket += f"{pedido.tipo_orden.nombre}"
@@ -2153,8 +2156,10 @@ def generar_ticket_xprinter_a160h(pedido):
     ticket += f"Fecha: {pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n"
     ticket += f"Mesero: {pedido.mesero.get_full_name()}\n"
     if pedido.nombre_cliente:
-        ticket += f"Cliente: {pedido.nombre_cliente}\n"
-    
+        ticket += CENTER + DOUBLE_SIZE + BOLD_ON  # ← NUEVO: agrandado
+        ticket += f"{pedido.nombre_cliente.upper()}\n"
+        ticket += BOLD_OFF + NORMAL_SIZE + LEFT
+     
     ticket += SEPARATOR_CHAR * ANCHO + "\n"
     
     # SECCIÓN COCINA
