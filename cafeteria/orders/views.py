@@ -445,15 +445,18 @@ def detalle_pedido(request, pedido_id):
 
 @login_required
 def seleccionar_mesa(request):
-    mesas = Mesa.objects.all().order_by('numero')
-    
-    # Configuración automática de posiciones basada en una cuadrícula
-    mesas_por_fila = 5  # Número de mesas por fila
-    espaciado_x = 15    # Espacio horizontal entre mesas (%)
-    espaciado_y = 15    # Espacio vertical entre mesas (%)
-    inicio_x = 10       # Margen izquierdo inicial (%)
-    inicio_y = 20       # Margen superior inicial (%)
-    
+    # ✅ CORRECCIÓN: select_related no aplica aquí pero sí values()
+    # para traer solo los campos que necesita el template
+    mesas = Mesa.objects.only(
+        'id', 'numero', 'estado'
+    ).order_by('numero')
+
+    mesas_por_fila = 5
+    espaciado_x = 15
+    espaciado_y = 15
+    inicio_x = 10
+    inicio_y = 20
+
     mesa_positions = {}
     for i, mesa in enumerate(mesas):
         fila = i // mesas_por_fila
@@ -462,12 +465,12 @@ def seleccionar_mesa(request):
             'x': inicio_x + columna * espaciado_x,
             'y': inicio_y + fila * espaciado_y
         }
-    
+
     context = {
         'mesas': mesas,
         'mesa_positions': mesa_positions
     }
-    
+
     return render(request, 'orders/pedidos/seleccionar_mesa.html', context)
 
 @login_required
