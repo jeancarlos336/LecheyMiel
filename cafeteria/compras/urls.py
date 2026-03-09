@@ -26,7 +26,7 @@ urlpatterns = [
     
     
     #TIPO DE COMPRAS
-    path('tipodecompra', views.TipoCompraListView.as_view(), name='tipodecompralista'),
+    path('tipodecompra/', views.TipoCompraListView.as_view(), name='tipodecompralista'),
     path('crear/', views.TipoCompraCreateView.as_view(), name='crear'),
     path('editar/<int:pk>/', views.TipoCompraUpdateView.as_view(), name='editar'),
     path('eliminar/<int:pk>/', views.TipoCompraDeleteView.as_view(), name='eliminar'),
