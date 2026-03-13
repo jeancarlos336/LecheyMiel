@@ -37,6 +37,9 @@ urlpatterns = [
     #path('pedido/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido'),
     path('pedido/<int:pedido_id>/eliminar/', views.eliminar_pedido, name='eliminar_pedido'),
     
+ 
+    path('pedido/<int:pedido_id>/editar-sin-mesa/', views.editar_pedido_sin_mesa, name='editar_pedido_sin_mesa'),
+    
     path('seleccionar-mesa/', views.seleccionar_mesa, name='seleccionar_mesa'),
     
     # Rutas para Mesas

@@ -2929,3 +2929,32 @@ def informe_pagos(request):
     }
     
     return render(request, 'orders/pedidos/informe_pagos.html', context)
+
+
+@login_required
+def editar_pedido_sin_mesa(request, pedido_id):
+    """
+    Vista puente que permite editar pedidos de tipo Barra,
+    Venta Express u otros tipos sin mesa, desde la lista de
+    pedidos pendientes.
+    Reutiliza la vista tomar_pedido_para_llevar existente.
+    """
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+ 
+    # Seguridad: solo pedidos sin mesa
+    if pedido.mesa:
+        messages.error(request, "Este pedido es de mesa. Usa la vista de mesa para editarlo.")
+        return redirect('orders:seleccionar_mesa')
+ 
+    # Seguridad: no editar pedidos ya pagados o cancelados
+    if pedido.estado_pago == 'pagado' or pedido.estado == 'cancelado':
+        messages.error(request, "No se puede editar un pedido pagado o cancelado.")
+        return redirect('orders:lista_pedidos_pendientes')
+ 
+    # Redirigir a la vista de tomar pedido para llevar existente
+    return redirect(
+        'orders:tomar_pedido_para_llevar',
+        tipo_orden_id=pedido.tipo_orden.id,
+        pedido_id=pedido.id
+    )
+ 

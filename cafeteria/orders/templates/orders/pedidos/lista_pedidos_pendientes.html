@@ -6,10 +6,10 @@
             <h1 class="mb-4">Pedidos Pendientes</h1>
             <form method="get" class="mb-4">
                 <div class="input-group">
-                    <input type="text" 
-                           class="form-control" 
-                           name="q" 
-                           placeholder="Buscar por mesa, cliente o número de pedido..." 
+                    <input type="text"
+                           class="form-control"
+                           name="q"
+                           placeholder="Buscar por mesa, cliente o número de pedido..."
                            value="{{ query }}">
                     <button class="btn btn-primary" type="submit">
                         <i class="fas fa-search"></i> Buscar
@@ -20,8 +20,8 @@
                     </a>
                     {% endif %}
                 </div>
-            </form>            
-            <!-- Resultados de la búsqueda -->
+            </form>
+
             {% if query and not pedidos %}
             <div class="alert alert-warning">
                 No se encontraron pedidos con "{{ query }}"
@@ -29,77 +29,84 @@
             {% endif %}
         </div>
     </div>
+
     <div class="row">
         <div class="col-12">
             {% for pedido in pedidos %}
             <div class="card mb-3">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-1">
                     <span>
-                        Pedido #{{ pedido.id }} 
+                        Pedido #{{ pedido.id }}
                         {% if pedido.mesa %}
-                            - Mesa {{ pedido.mesa.numero }}
+                            — Mesa {{ pedido.mesa.numero }}
                         {% else %}
-                            - {{ pedido.tipo_orden.nombre }}
-                            {% if pedido.numero_orden %}
-                                ({{ pedido.numero_orden }})
-                            {% endif %}
+                            — {{ pedido.tipo_orden.nombre }}
+                            {% if pedido.numero_orden %}({{ pedido.numero_orden }}){% endif %}
                         {% endif %}
                         {% if pedido.nombre_cliente %}
-                            - {{ pedido.nombre_cliente }}
+                            — {{ pedido.nombre_cliente }}
                         {% endif %}
                     </span>
                     <small>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</small>
                 </div>
-                <div class="card-body">
-                    {% for area, detalles in pedido.detalles_por_area.items %}
-                    <h5 class="card-title">{{ area|capfirst }}</h5>
-                    <ul class="list-group mb-3">
-                        {% for detalle in detalles %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ detalle.cantidad }}x {{ detalle.producto.nombre }}
-                            <span class="badge
-                                {% if detalle.estado == 'pendiente' %}bg-warning
-                                {% elif detalle.estado == 'en_preparacion' %}bg-info
-                                {% elif detalle.estado == 'listo' %}bg-success
-                                {% elif detalle.estado == 'entregado' %}bg-primary
-                                {% else %}bg-danger{% endif %}
-                            ">
-                                {{ detalle.get_estado_display }}
-                            </span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% endfor %}
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">Total: ${{ pedido.monto_total|floatformat:0 }}</h4>
-                        <div>
-                            <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-outline-primary me-2">
-                                <i class="fas fa-sync"></i> Actualizar Estado
-                            </a>
-                            
-                            <!-- Botón de impresión de cocina con estado -->
-                            <a href="{% url 'orders:boleta_mobile' pedido.id %}" class="btn btn-outline-info me-2" >
-                                 <i class="fas fa-receipt"></i> Imprimir Boleta
-                            </a>
-                            <a href="{% url 'orders:imprimir_orden_mobile' pedido.id %}" 
-                               class="btn btn-sm {% if pedido.recibo_cocina_impreso %}btn-success{% else %}btn-outline-primary{% endif %} me-2"
-                               id="btn-cocina-{{ pedido.id }}"
-                               onclick="marcarComoImpreso({{ pedido.id }})">
-                                <i class="fas fa-print"></i> Cocina
-                            </a>
-                            
-                            <div class="d-flex justify-content-end">
-                                {% if pedido.puede_cerrarse %}
-                                <a href="{% url 'orders:procesar_pago' pedido.id %}" class="btn btn-success">
-                                    <i class="fas fa-check"></i> Cerrar Pedido
-                                </a>
+
+                <div class="card-body py-2">
+
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <h5 class="mb-0">Total: ${{ pedido.monto_total|floatformat:0 }}</h5>
+
+                        {% if pedido.puede_cerrarse %}
+                            <span class="badge bg-success fs-6">Lista</span>
+                        {% else %}
+                            {% with primer_estado=pedido.detalles.first.estado %}
+                                {% if primer_estado == 'en_preparacion' %}
+                                    <span class="badge bg-info text-dark fs-6">En preparación</span>
                                 {% else %}
-                                <button class="btn btn-secondary" disabled title="Todos los productos deben estar listos o cancelados">
-                                    <i class="fas fa-check"></i> Cerrar Pedido
-                                </button>
+                                    <span class="badge bg-warning text-dark fs-6">Pendiente</span>
                                 {% endif %}
-                            </div>
-                        </div>
+                            {% endwith %}
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                        
+                        <a href="{% url 'orders:boleta_mobile' pedido.id %}" class="btn btn-sm btn-outline-info">
+                            <i class="fas fa-receipt"></i> Imprimir Boleta
+                        </a>
+
+                        <a href="{% url 'orders:imprimir_orden_mobile' pedido.id %}"
+                           class="btn btn-sm {% if pedido.recibo_cocina_impreso %}btn-success{% else %}btn-outline-primary{% endif %}"
+                           id="btn-cocina-{{ pedido.id }}"
+                           onclick="marcarComoImpreso({{ pedido.id }})">
+                            <i class="fas fa-print"></i> Cocina
+                        </a>
+
+                        {# Editar: mesa → va directo a tomar_pedido con la mesa #}
+                        {% if pedido.mesa %}
+                        <a href="{% url 'orders:tomar_pedido' pedido.mesa.id %}"
+                           class="btn btn-sm btn-outline-warning">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        {# Editar: sin mesa (Barra, Venta Express, etc.) → vista puente #}
+                        {% else %}
+                        <a href="{% url 'orders:editar_pedido_sin_mesa' pedido.id %}"
+                           class="btn btn-sm btn-outline-warning">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        {% endif %}
+
+                        {% if pedido.puede_cerrarse %}
+                        <a href="{% url 'orders:procesar_pago' pedido.id %}" class="btn btn-sm btn-success">
+                            <i class="fas fa-check"></i> Cerrar Pedido
+                        </a>
+                        {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled
+                                title="Todos los productos deben estar listos o cancelados">
+                            <i class="fas fa-check"></i> Cerrar Pedido
+                        </button>
+                        {% endif %}
+
                     </div>
                 </div>
             </div>
@@ -113,12 +120,10 @@
 </div>
 
 <script>
-// Función para marcar el recibo como impreso
-document.addEventListener('DOMContentLoaded', function() {
-    // Restaurar estados de los botones
+document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[id^="btn-cocina-"]').forEach(btn => {
         const pedidoId = btn.id.split('-')[2];
-        if(localStorage.getItem(`cocina-impreso-${pedidoId}`)) {
+        if (localStorage.getItem(`cocina-impreso-${pedidoId}`)) {
             btn.classList.remove('btn-outline-primary');
             btn.classList.add('btn-success');
         }
@@ -127,18 +132,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function marcarComoImpreso(pedidoId) {
     const btn = document.getElementById(`btn-cocina-${pedidoId}`);
-    
-    // Cambiar el estilo
     btn.classList.remove('btn-outline-primary');
     btn.classList.add('btn-success');
-    
-    // Guardar en localStorage
     localStorage.setItem(`cocina-impreso-${pedidoId}`, 'true');
-    
-    // Opcional: aún puedes enviar la petición al servidor
+
     fetch(`/orders/imprimir_recibo_cocina/${pedidoId}/`, {
-        // ... configuración de la petición
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
     });
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
 }
 </script>
 {% endblock %}
