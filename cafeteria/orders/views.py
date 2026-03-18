@@ -504,9 +504,15 @@ def cambiar_estado_pedido(request, pedido_id):
 
 @login_required
 def lista_pedidos_pendientes(request):
-       
-    query = request.GET.get('q', '')    
-    pedidos = Pedido.objects.filter(estado_pago='pendiente').order_by('-fecha_creacion')
+    
+    query = request.GET.get('q', '')
+    
+    pedidos = (
+        Pedido.objects
+        .filter(estado_pago='pendiente')
+        .prefetch_related('detalles')          # ✅ Trae todos los detalles en 1 sola query
+        .order_by('-fecha_creacion')
+    )
     
     if query:
         pedidos = pedidos.filter(
@@ -515,27 +521,24 @@ def lista_pedidos_pendientes(request):
             Q(nombre_cliente__icontains=query) |
             Q(numero_orden__icontains=query)
         )
-        
+    
     # Preparar detalles por área para cada pedido
     for pedido in pedidos:
         pedido.detalles_por_area = {}
+        pedido.puede_cerrarse = True
+        
+        # ✅ Un solo loop — usa el caché de prefetch, cero queries extra
         for detalle in pedido.detalles.all():
             area = detalle.area_preparacion
             if area not in pedido.detalles_por_area:
                 pedido.detalles_por_area[area] = []
             pedido.detalles_por_area[area].append(detalle)
-        
-        # Verificar si todos los productos están listos para cerrar el pedido
-        pedido.puede_cerrarse = True  # Comenzamos asumiendo que se puede cerrar
-        for detalle in pedido.detalles.all():
-            # Si hay algún producto pendiente o en preparación, no se puede cerrar
+            
+            # Verificar cierre en el mismo loop
             if detalle.estado in ['pendiente', 'en_preparacion']:
                 pedido.puede_cerrarse = False
-                break
-    
-    context = {
-        'pedidos': pedidos
-    }
+        
+    context = {'pedidos': pedidos}
     return render(request, 'orders/pedidos/lista_pedidos_pendientes.html', context)
 
 
