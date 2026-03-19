@@ -214,7 +214,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CONFIGURACIÓN ESPECÍFICA XPRINTER SPRT-80mm
 # ===============================
 
-PRINTER_IP = '10.201.71.207'
+PRINTER_IP = '192.168.0.205'
 PRINTER_PORT = 9100
 PRINTER_TIMEOUT = 15
 
