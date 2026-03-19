@@ -15,7 +15,6 @@ urlpatterns = [
     # Rutas para Pedidos
     path('tomar-pedido/<int:mesa_id>/', views.tomar_pedido, name='tomar_pedido'),
     path('pedidos/', views.lista_pedidos_pendientes, name='lista_pedidos_pendientes'),
-    #path('detalle-pedido/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido'),
     path('pedido/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido'),
     
 
@@ -34,7 +33,6 @@ urlpatterns = [
 
     
     path('todos-pedidos/', views.todos_los_pedidos, name='todos_los_pedidos'),
-    #path('pedido/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido'),
     path('pedido/<int:pedido_id>/eliminar/', views.eliminar_pedido, name='eliminar_pedido'),
     
  

@@ -7,6 +7,8 @@ Optimizado para Xprinter XP-A160H y acceso móvil.
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,9 +17,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # CONFIGURACIÓN BÁSICA DE DJANGO
 # ===============================
 
-SECRET_KEY = "django-insecure-yv1a-#q#0*n@@_5j3=94&@$r(&s&$wfuf7#q)i+fv+qfi6@ht3"
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
-DEBUG = True  # ⚠️ Cambiar a False en producción real
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # ✅ CORRECCIÓN: Django NO soporta wildcards (*) en ALLOWED_HOSTS
 # Se deben poner las IPs exactas. Agregada tu IP 192.168.0.139
@@ -162,17 +164,15 @@ WSGI_APPLICATION = "cafeteria.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cafeteria1_db',
-        'USER': 'jortega',
-        'PASSWORD': 'Carlos.2024',
-        'HOST': 'localhost',
-        'PORT': '5432',
-        # ✅ AGREGADO: Configuración de conexiones persistentes
-        # Reduce la latencia en móviles al reutilizar conexiones a la BD
-        'CONN_MAX_AGE': 300,         # Reutiliza conexiones por 300 segundos
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+        'CONN_MAX_AGE': 300,
         'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
-            'connect_timeout': 10,  # Evita esperas infinitas
+            'connect_timeout': 10,
         },
     }
 }

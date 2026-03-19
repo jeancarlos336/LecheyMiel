@@ -419,29 +419,6 @@ def tomar_pedido(request, mesa_id):
     
     return render(request, 'orders/pedidos/tomar_pedido.html', context)
 
-@login_required
-def detalle_pedido(request, pedido_id):
-    """
-    View to show and modify order details
-    """
-    pedido = get_object_or_404(Pedido, id=pedido_id)
-    
-    if request.method == 'POST':
-        # Handle actions like removing items or changing quantities
-        action = request.POST.get('action')
-        if action == 'eliminar_item':
-            detalle_id = request.POST.get('detalle_id')
-            detalle = get_object_or_404(DetallePedido, id=detalle_id, pedido=pedido)
-            detalle.delete()
-
-            # Recalculate total
-            pedido.monto_total = sum(
-                detalle.cantidad * detalle.precio_unitario 
-                for detalle in pedido.detalles.all()
-            )
-            pedido.save()
-
-    return render(request, 'orders/detalle_pedido.html', {'pedido': pedido})
 
 @login_required
 def seleccionar_mesa(request):
@@ -510,9 +487,13 @@ def lista_pedidos_pendientes(request):
     pedidos = (
         Pedido.objects
         .filter(estado_pago='pendiente')
-        .prefetch_related('detalles')          # ✅ Trae todos los detalles en 1 sola query
+        .prefetch_related(                              # ← solo cambia esta parte
+            'detalles__producto',
+            'detalles__producto__categoria__area_preparacion',
+            'mesa',
+        )
         .order_by('-fecha_creacion')
-    )
+    )    
     
     if query:
         pedidos = pedidos.filter(
@@ -608,11 +589,19 @@ def todos_los_pedidos(request):
     }
     return render(request, 'orders/pedidos/todos_pedidos.html', context)
 
+
 @login_required
 def detalle_pedido(request, pedido_id):
-    pedido = get_object_or_404(Pedido, id=pedido_id)
+    pedido = get_object_or_404(
+        Pedido.objects.select_related(
+            'mesa',
+            'tipo_orden',
+        ).prefetch_related(
+            'detalles__producto',
+        ),
+        id=pedido_id
+    )
     return render(request, 'orders/pedidos/detalle_pedido.html', {'pedido': pedido})
-
 
 @login_required
 def eliminar_pedido(request, pedido_id):
@@ -1062,29 +1051,26 @@ def completar_pago(request, pedido_id):
     # Si no es POST, redirigir a la página de procesar pago
     return redirect('orders:procesar_pago', pedido_id=pedido.id)
 
+    
 @login_required
 def listar_pagos_pendientes(request):
-    """
-    Muestra todos los pagos pendientes con paginación y búsqueda por cliente
-    """
-    # Obtener el parámetro de búsqueda
     cliente_busqueda = request.GET.get('cliente', '')
     
-    # Filtrar solo los pagos pendientes que no han sido pagados
-    pagos_pendientes = PagoPendiente.objects.filter(esta_pagado=False)
+    pagos_pendientes = PagoPendiente.objects.filter(
+        esta_pagado=False
+    ).select_related(
+        'pago__pedido__mesa',      # ✅ trae pago + pedido + mesa en 1 query
+        'pago__pedido__tipo_orden' # ✅ para el tipo de orden si lo usas
+    )
     
-    # Aplicar filtro por cliente si se ha proporcionado una búsqueda
     if cliente_busqueda:
         pagos_pendientes = pagos_pendientes.filter(cliente_nombre__icontains=cliente_busqueda)
     
-    # Ordenar por fecha de creación del pedido (más reciente primero)
     pagos_pendientes = pagos_pendientes.order_by('-pago__pedido__fecha_creacion')
     
-    # Calcular el total pendiente de los pagos filtrados
     total_pendiente = pagos_pendientes.aggregate(total=Sum('pago__monto'))['total'] or 0
     
-    # Configurar la paginación
-    paginator = Paginator(pagos_pendientes, 10)  # 10 pagos por página
+    paginator = Paginator(pagos_pendientes, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -1095,7 +1081,6 @@ def listar_pagos_pendientes(request):
         'paginator': paginator,
         'page_obj': page_obj,
     })
-    
 @login_required
 def marcar_pago_como_pagado(request, pago_pendiente_id):
     """
@@ -2714,8 +2699,9 @@ def ranking_productos_view(request):
     """Vista principal para mostrar el formulario de selección de fechas"""
     return render(request, 'orders/pedidos/ranking_productos.html')
 
+
 def ranking_productos_data(request):
-    """API endpoint que devuelve los datos del ranking - VERSION CORREGIDA"""
+    """API endpoint que devuelve los datos del ranking"""
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
     
@@ -2723,15 +2709,10 @@ def ranking_productos_data(request):
         return JsonResponse({'error': 'Fechas requeridas'}, status=400)
     
     try:
-        # PASO 1: Convertir strings a fechas
-        print(f"DEBUG - Fechas recibidas: {fecha_inicio} - {fecha_fin}")
         fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
         fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-        print(f"DEBUG - Fechas convertidas: {fecha_inicio} - {fecha_fin}")
         
-        # PASO 2: Verificar que existen datos
         total_detalles = DetallePedido.objects.count()
-        print(f"DEBUG - Total DetallePedido en BD: {total_detalles}")
         
         if total_detalles == 0:
             return JsonResponse({
@@ -2739,19 +2720,15 @@ def ranking_productos_data(request):
                 'debug': 'La tabla DetallePedido está vacía'
             }, status=200)
         
-        # PASO 3: Verificar filtro de fechas (corregido para timezone)
         detalles_en_rango = DetallePedido.objects.filter(
             pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin]
         ).count()
-        print(f"DEBUG - DetallePedido en rango de fechas: {detalles_en_rango}")
         
-        # PASO 4: Verificar filtro con estados CORREGIDOS
         detalles_con_estado = DetallePedido.objects.filter(
             pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
-            pedido__estado__in=['completado'],  # ✅ Cambiado de 'entregado' a 'completado'
-            estado__in=['Entregado', 'entregado', 'listo']  # ✅ Incluye ambas variantes
+            pedido__estado__in=['completado'],
+            estado__in=['Entregado', 'entregado', 'listo']
         ).count()
-        print(f"DEBUG - DetallePedido con estados válidos: {detalles_con_estado}")
         
         if detalles_con_estado == 0:
             return JsonResponse({
@@ -2766,29 +2743,13 @@ def ranking_productos_data(request):
                 'debug': f'No hay datos con estados válidos. Total en rango: {detalles_en_rango}'
             })
         
-        # PASO 5: Verificar la consulta básica sin aggregation
-        print("DEBUG - Ejecutando consulta básica...")
+        from django.db.models import F
+        
         queryset_basico = DetallePedido.objects.filter(
             pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
-            pedido__estado__in=['completado'],  # ✅ Corregido
-            estado__in=['Entregado', 'entregado', 'listo']  # ✅ Corregido
+            pedido__estado__in=['completado'],
+            estado__in=['Entregado', 'entregado', 'listo']
         ).select_related('producto', 'producto__categoria', 'pedido')
-        
-        # Verificar un registro
-        primer_detalle = queryset_basico.first()
-        if primer_detalle:
-            print(f"DEBUG - Primer detalle encontrado: {primer_detalle.id}")
-            print(f"DEBUG - Producto: {primer_detalle.producto.nombre if primer_detalle.producto else 'None'}")
-            print(f"DEBUG - Cantidad: {primer_detalle.cantidad}")
-            print(f"DEBUG - Subtotal: {primer_detalle.subtotal}")
-            print(f"DEBUG - Estado pedido: {primer_detalle.pedido.estado}")
-            print(f"DEBUG - Estado detalle: {primer_detalle.estado}")
-        
-        # PASO 6: Ejecutar la consulta con aggregation
-        print("DEBUG - Ejecutando consulta con aggregation...")
-        
-        # ✅ Usar F() para el cálculo del subtotal en la BD
-        from django.db.models import F
         
         ranking = queryset_basico.values(
             'producto__id',
@@ -2797,18 +2758,13 @@ def ranking_productos_data(request):
             'producto__categoria__nombre'
         ).annotate(
             total_vendido=Sum('cantidad'),
-            valor_total=Sum(F('cantidad') * F('precio_unitario')),  # ✅ Cálculo en BD
+            valor_total=Sum(F('cantidad') * F('precio_unitario')),
             numero_pedidos=Count('pedido', distinct=True)
         ).order_by('-total_vendido')[:20]
         
-        print(f"DEBUG - Número de productos en ranking: {len(ranking)}")
-        
-        # PASO 7: Procesar los resultados
         ranking_list = []
         for i, item in enumerate(ranking):
             try:
-                print(f"DEBUG - Procesando item {i+1}: {item}")
-                
                 producto_data = {
                     'producto__id': item['producto__id'],
                     'producto__nombre': item['producto__nombre'] or 'Sin nombre',
@@ -2819,20 +2775,14 @@ def ranking_productos_data(request):
                     'numero_pedidos': item['numero_pedidos'] or 0
                 }
                 ranking_list.append(producto_data)
-                
-            except Exception as e:
-                print(f"DEBUG - Error procesando item {i+1}: {str(e)}")
-                print(f"DEBUG - Datos del item problemático: {item}")
+            except Exception:
                 continue
         
-        # Calcular totales generales
         totales = {
             'total_productos_vendidos': sum(item['total_vendido'] for item in ranking_list),
             'valor_total_ventas': sum(item['valor_total'] for item in ranking_list),
             'numero_productos_diferentes': len(ranking_list)
         }
-        
-        print(f"DEBUG - Totales calculados: {totales}")
         
         return JsonResponse({
             'ranking': ranking_list,
@@ -2843,24 +2793,19 @@ def ranking_productos_data(request):
         })
         
     except ValueError as e:
-        print(f"DEBUG - Error de formato de fecha: {str(e)}")
         return JsonResponse({'error': f'Formato de fecha inválido: {str(e)}'}, status=400)
     except Exception as e:
-        print(f"DEBUG - Error general: {str(e)}")
-        print(f"DEBUG - Tipo de error: {type(e).__name__}")
         import traceback
-        print(f"DEBUG - Traceback completo: {traceback.format_exc()}")
+        traceback.print_exc()
         return JsonResponse({
             'error': f'Error interno: {str(e)}',
             'error_type': type(e).__name__,
             'debug': 'Ver logs del servidor para más detalles'
         }, status=500)
         
-        
-##########INFORMES DE PAGOS
-
+##########INFORMES DE GANANCIAS
+@login_required
 def informe_pagos(request):
-    # Inicialización de variables
     desde = request.GET.get('desde')
     hasta = request.GET.get('hasta')
     resumen_mensual = []
@@ -2868,15 +2813,12 @@ def informe_pagos(request):
     
     if request.method == 'GET' and desde and hasta:
         try:
-            # Validación y conversión de fechas
             desde_dt = datetime.strptime(desde, "%Y-%m-%d").date()
             hasta_dt = datetime.strptime(hasta, "%Y-%m-%d").date()
            
-            # Validación adicional de fechas
             if desde_dt > hasta_dt:
                 raise ValueError("La fecha de inicio no puede ser mayor a la fecha final")
             
-            # Consulta optimizada con debug
             pagos_por_mes = (
                 Pago.objects
                 .filter(fecha__date__gte=desde_dt, fecha__date__lte=hasta_dt)
@@ -2890,39 +2832,21 @@ def informe_pagos(request):
                 .order_by('mes')
             )
             
-            # Debug: Imprimir la consulta SQL generada
-            print("SQL Query:", pagos_por_mes.query)
-            print("Resultados encontrados:", pagos_por_mes.count())
-            
-            # Procesamiento de resultados con más debug
             resumen_mensual = []
             for item in pagos_por_mes:
-                # Debug: imprimir cada item
-                print(f"Item procesado: {item}")
-                
                 resumen_data = {
                     'mes': item['mes'].strftime('%B %Y').capitalize() if item['mes'] else 'Sin fecha',
-                    'mes_iso': item['mes'].strftime('%Y-%m') if item['mes'] else '',  # Para ordenamiento
+                    'mes_iso': item['mes'].strftime('%Y-%m') if item['mes'] else '',
                     'total_venta': float(item['total_venta']) if item['total_venta'] is not None else 0.0,
                     'total_costo': float(item['total_costo']) if item['total_costo'] is not None else 0.0,
                     'total_ganancia': float(item['total_ganancia']) if item['total_ganancia'] is not None else 0.0,
                 }
                 resumen_mensual.append(resumen_data)
-            
-            # Debug final
-            print(f"Resumen final: {len(resumen_mensual)} meses procesados")
-            for r in resumen_mensual:
-                print(f"- {r['mes']}: Ventas={r['total_venta']}, Costos={r['total_costo']}, Ganancia={r['total_ganancia']}")
                 
         except ValueError as ve:
             error = f"Error en las fechas: {str(ve)}"
-            print(f"Error de validación: {ve}")
         except Exception as e:
             error = f"Error al generar el informe: {str(e)}"
-            # Loggear el error completo para diagnóstico
-            print(f"Error completo: {e}")
-            import traceback
-            traceback.print_exc()
     
     context = {
         'resumen_mensual': resumen_mensual,
@@ -2932,7 +2856,6 @@ def informe_pagos(request):
     }
     
     return render(request, 'orders/pedidos/informe_pagos.html', context)
-
 
 @login_required
 def editar_pedido_sin_mesa(request, pedido_id):
