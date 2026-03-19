@@ -169,7 +169,8 @@ DATABASES = {
         'PORT': '5432',
         # ✅ AGREGADO: Configuración de conexiones persistentes
         # Reduce la latencia en móviles al reutilizar conexiones a la BD
-        'CONN_MAX_AGE': 60,         # Reutiliza conexiones por 60 segundos
+        'CONN_MAX_AGE': 300,         # Reutiliza conexiones por 300 segundos
+        'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
             'connect_timeout': 10,  # Evita esperas infinitas
         },
