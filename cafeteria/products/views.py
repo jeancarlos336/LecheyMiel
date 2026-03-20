@@ -13,19 +13,32 @@ from django.http import JsonResponse
 from django.db import models
 
 
-
 class EsAdministrador(UserPassesTestMixin):
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.rol and self.request.user.rol.nombre == Rol.ADMINISTRADOR
 
-# Vistas para Productos
+
 class ProductoListView(LoginRequiredMixin, ListView):
     model = Producto
     template_name = 'products/producto_list.html'
     context_object_name = 'productos'
-    
+    paginate_by = 20
+
     def get_queryset(self):
-        return Producto.objects.all().select_related('categoria')
+        queryset = Producto.objects.all().select_related(
+            'categoria',
+            'categoria__area_preparacion',  # ← trae el área en una sola query
+        ).prefetch_related('stock')          # ← trae el stock sin N+1
+        
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            queryset = queryset.filter(
+                Q(nombre__icontains=q) |
+                Q(descripcion__icontains=q) |
+                Q(categoria__nombre__icontains=q) |
+                Q(categoria__area_preparacion__nombre__icontains=q)  # ← busca por área también
+            )
+        return queryset
 
 class ProductoCreateView(LoginRequiredMixin, EsAdministrador, CreateView):
     model = Producto
