@@ -1,203 +1,715 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    {% if messages %}
-    <div class="row mt-3">
-        <div class="col-12">
-            {% for message in messages %}
-            <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
-                {% if message.tags == 'success' %}<i class="fas fa-check-circle me-2"></i>
-                {% elif message.tags == 'error' %}<i class="fas fa-exclamation-circle me-2"></i>
-                {% else %}<i class="fas fa-info-circle me-2"></i>{% endif %}
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+
+  :root {
+    --bg:        #f7f8fc;
+    --surface:   #ffffff;
+    --surface2:  #f0f2f8;
+    --border:    #e4e7f2;
+    --text:      #1c1f36;
+    --muted:     #8891b8;
+    --accent:    #2563eb;
+    --accent-lt: #eff4ff;
+
+    --st-pend:   #f59e0b;
+    --st-prep:   #06b6d4;
+    --st-listo:  #10b981;
+    --st-entg:   #6366f1;
+    --st-canc:   #ef4444;
+
+    --py-pend:   #f59e0b;
+    --py-pago:   #10b981;
+    --py-canc:   #ef4444;
+
+    --r:  10px;
+    --rs: 7px;
+    --shadow: 0 1px 4px rgba(28,31,54,.07), 0 4px 16px rgba(28,31,54,.05);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .po-wrap {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--text);
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* ── Header ─────────────────────────── */
+  .po-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+
+  .po-title { line-height: 1.1; }
+  .po-title small {
+    display: block;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .po-title h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .po-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-lt);
+    color: var(--accent);
+    border: 1px solid rgba(37,99,235,.18);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: .8rem;
+    font-weight: 700;
+    font-family: 'Fira Code', monospace;
+  }
+
+  /* ── Alerts ─────────────────────────── */
+  .po-alert {
+    padding: .75rem 1rem;
+    border-radius: var(--rs);
+    margin-bottom: 1rem;
+    font-size: .875rem;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-lt);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+  .po-alert.success { border-color: var(--st-listo); background: #f0fdf4; }
+  .po-alert.error   { border-color: var(--st-canc);  background: #fef2f2; }
+
+  /* ── Filter panel ────────────────────── */
+  .po-filter-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    margin-bottom: 1.25rem;
+  }
+
+  .filter-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: .9rem 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: .875rem;
+    font-weight: 700;
+    color: var(--text);
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s;
+  }
+  .filter-toggle.open { border-bottom-color: var(--border); }
+  .filter-toggle .left { display: flex; align-items: center; gap: .6rem; color: var(--muted); }
+  .filter-toggle .left span { color: var(--text); }
+  .filter-toggle .chevron { color: var(--muted); transition: transform .25s; }
+  .filter-toggle.open .chevron { transform: rotate(180deg); }
+
+  .filter-body {
+    display: none;
+    padding: 1.1rem 1.2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .filter-body.open { display: flex; }
+
+  .fg {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 160px;
+  }
+  .fg label {
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .fg input, .fg select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+    padding: .55rem .85rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: .875rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    width: 100%;
+  }
+  .fg input:focus, .fg select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    background: #fff;
+  }
+
+  .filter-actions { display: flex; gap: .6rem; align-items: flex-end; padding-bottom: 1px; }
+
+  .btn-primary-sm {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: .55rem 1.1rem;
+    border-radius: var(--rs);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background .2s;
+    white-space: nowrap;
+  }
+  .btn-primary-sm:hover { background: #1d4ed8; }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: .55rem 1rem;
+    border-radius: var(--rs);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+  /* active filter chips */
+  .active-filters {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--accent-lt);
+    color: var(--accent);
+    border: 1px solid rgba(37,99,235,.2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: .72rem;
+    font-weight: 700;
+    font-family: 'Fira Code', monospace;
+  }
+
+  /* ── Table card ──────────────────────── */
+  .po-table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .table-responsive { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .845rem;
+  }
+
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  thead th {
+    padding: .8rem 1rem;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #fafbff; }
+
+  tbody td {
+    padding: .78rem 1rem;
+    vertical-align: middle;
+  }
+
+  .td-id {
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    color: var(--accent);
+    font-size: .8rem;
+  }
+
+  .td-mesa {
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    font-size: .82rem;
+  }
+
+  .td-total {
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    font-size: .88rem;
+    color: var(--text);
+  }
+
+  .td-date {
+    color: var(--muted);
+    font-size: .8rem;
+    white-space: nowrap;
+  }
+
+  /* ── Status badges ───────────────────── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* ── Status badges - específicos para ganarle a Bootstrap ── */
+  .po-wrap .badge { 
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px !important;
+    font-size: .68rem !important;
+    font-weight: 700 !important;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .po-wrap .badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* pedido */
+  .po-wrap .st-pendiente      { background: #fff7ed !important; color: #c2410c !important; border: 1.5px solid #fdba74 !important; }
+  .po-wrap .st-en_preparacion { background: #ecfeff !important; color: #0e7490 !important; border: 1.5px solid #67e8f9 !important; }
+  .po-wrap .st-listo          { background: #f0fdf4 !important; color: #15803d !important; border: 1.5px solid #86efac !important; }
+  .po-wrap .st-entregado      { background: #eef2ff !important; color: #4338ca !important; border: 1.5px solid #a5b4fc !important; }
+  .po-wrap .st-cancelado      { background: #fef2f2 !important; color: #b91c1c !important; border: 1.5px solid #fca5a5 !important; }
+  .po-wrap .st-completado     { background: #eef2ff !important; color: #4338ca !important; border: 1.5px solid #a5b4fc !important; }
+
+  /* pago */
+  .po-wrap .py-pendiente { background: #fff7ed !important; color: #c2410c !important; border: 1.5px solid #fdba74 !important; }
+  .po-wrap .py-pagado    { background: #f0fdf4 !important; color: #15803d !important; border: 1.5px solid #86efac !important; }
+  .po-wrap .py-impago    { background: #fef2f2 !important; color: #b91c1c !important; border: 1.5px solid #fca5a5 !important; }
+  .po-wrap .py-cancelado { background: #f8fafc !important; color: #475569 !important; border: 1.5px solid #cbd5e1 !important; }
+
+  /* ── Action buttons ──────────────────── */
+  .actions { display: flex; gap: 5px; justify-content: center; }
+
+  .btn-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--rs);
+    font-size: .72rem;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-act:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+
+  .act-ver    { background: rgba(37,99,235,.08);  color: var(--accent);     border-color: rgba(37,99,235,.22); }
+  .act-print  { background: rgba(16,185,129,.08); color: #065f46;           border-color: rgba(16,185,129,.22); }
+  .act-del    { background: rgba(239,68,68,.07);  color: #b91c1c;           border-color: rgba(239,68,68,.2); }
+
+  /* ── Empty state ─────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+  }
+  .empty-state .ico { font-size: 2.2rem; margin-bottom: .75rem; opacity: .35; }
+  .empty-state p { font-size: .9rem; }
+  .empty-state a {
+    display: inline-block;
+    margin-top: .75rem;
+    font-size: .8rem;
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  /* ── Pagination ──────────────────────── */
+  .pag-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+
+  .pag-info {
+    font-size: .75rem;
+    color: var(--muted);
+    font-family: 'Fira Code', monospace;
+  }
+
+  .pag-list {
+    display: flex;
+    gap: 3px;
+    list-style: none;
+  }
+
+  .pag-list li a,
+  .pag-list li span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border-radius: var(--rs);
+    font-size: .8rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .15s;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+  }
+  .pag-list li a:hover { background: var(--accent-lt); color: var(--accent); border-color: rgba(37,99,235,.3); }
+  .pag-list li.active span { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pag-list li.disabled span { opacity: .35; }
+</style>
+
+<div class="po-wrap">
+
+  <!-- Alerts -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="po-alert {% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% endif %}">
+        {% if message.tags == 'success' %}<i class="fas fa-check-circle"></i>
+        {% elif message.tags == 'error' %}<i class="fas fa-exclamation-circle"></i>
+        {% else %}<i class="fas fa-info-circle"></i>{% endif %}
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Header -->
+  <div class="po-header">
+    <div class="po-title">
+      <small>Gestión de Órdenes</small>
+      <h1>Todos los Pedidos</h1>
+    </div>
+    <span class="po-count">
+      <i class="fas fa-receipt"></i>
+      {{ total_resultados }} resultado{% if total_resultados != 1 %}s{% endif %}
+    </span>
+  </div>
+
+  <!-- Filtros -->
+  <div class="po-filter-card">
+    <button class="filter-toggle open" id="filterToggle" type="button">
+      <span class="left">
+        <i class="fas fa-sliders-h"></i>
+        <span>Filtros de búsqueda</span>
+      </span>
+      <i class="fas fa-chevron-down chevron"></i>
+    </button>
+    <form method="GET" action="">
+      <div class="filter-body open" id="filterBody">
+        <div class="fg" style="flex:2; min-width:200px;">
+          <label for="q">Búsqueda</label>
+          <input type="text" id="q" name="q" value="{{ query }}" placeholder="ID, cliente o mesa…" autocomplete="off">
+        </div>
+
+        <div class="fg">
+          <label for="mesa">Mesa</label>
+          <select id="mesa" name="mesa">
+            <option value="">Todas</option>
+            {% for mesa_num in mesas_disponibles %}
+            <option value="{{ mesa_num }}" {% if mesa_filtro == mesa_num|stringformat:"s" %}selected{% endif %}>
+              Mesa {{ mesa_num }}
+            </option>
             {% endfor %}
+          </select>
         </div>
-    </div>
+
+        <div class="fg">
+          <label for="fecha_desde">Desde</label>
+          <input type="date" id="fecha_desde" name="fecha_desde" value="{{ fecha_desde }}">
+        </div>
+
+        <div class="fg">
+          <label for="fecha_hasta">Hasta</label>
+          <input type="date" id="fecha_hasta" name="fecha_hasta" value="{{ fecha_hasta }}">
+        </div>
+
+        <div class="filter-actions">
+          <button type="submit" class="btn-primary-sm">
+            <i class="fas fa-search"></i> Buscar
+          </button>
+          <a href="{% url 'orders:todos_los_pedidos' %}" class="btn-ghost">
+            <i class="fas fa-times"></i> Limpiar
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Active filter chips -->
+  {% if query or mesa_filtro or fecha_desde or fecha_hasta %}
+  <div class="active-filters">
+    {% if query %}
+      <span class="chip"><i class="fas fa-search"></i> "{{ query }}"</span>
     {% endif %}
+    {% if mesa_filtro %}
+      <span class="chip"><i class="fas fa-chair"></i> Mesa {{ mesa_filtro }}</span>
+    {% endif %}
+    {% if fecha_desde %}
+      <span class="chip"><i class="fas fa-calendar"></i> Desde {{ fecha_desde }}</span>
+    {% endif %}
+    {% if fecha_hasta %}
+      <span class="chip"><i class="fas fa-calendar"></i> Hasta {{ fecha_hasta }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
 
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1>Todos los Pedidos</h1>
-                <span class="badge bg-secondary fs-6">{{ total_resultados }} resultado{% if total_resultados != 1 %}s{% endif %}</span>
-            </div>
-
-            <!-- Formulario de búsqueda y filtros -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-search me-2"></i>Buscar y Filtrar Pedidos
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="GET" class="row g-3">
-                        <!-- Búsqueda general -->
-                        <div class="col-md-4">
-                            <label for="q" class="form-label">Búsqueda general</label>
-                            <input type="text" class="form-control" id="q" name="q" value="{{ query }}" 
-                                   placeholder="Buscar por ID, cliente o mesa...">
-                        </div>
-                        
-                        <!-- Filtro por mesa -->
-                        <div class="col-md-2">
-                            <label for="mesa" class="form-label">Mesa</label>
-                            <select class="form-select" id="mesa" name="mesa">
-                                <option value="">Todas</option>
-                                {% for mesa_num in mesas_disponibles %}
-                                <option value="{{ mesa_num }}" {% if mesa_filtro == mesa_num|stringformat:"s" %}selected{% endif %}>
-                                    Mesa {{ mesa_num }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <!-- Fecha desde -->
-                        <div class="col-md-2">
-                            <label for="fecha_desde" class="form-label">Fecha desde</label>
-                            <input type="date" class="form-control" id="fecha_desde" name="fecha_desde" 
-                                   value="{{ fecha_desde }}">
-                        </div>
-
-                        <!-- Fecha hasta -->
-                        <div class="col-md-2">
-                            <label for="fecha_hasta" class="form-label">Fecha hasta</label>
-                            <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta" 
-                                   value="{{ fecha_hasta }}">
-                        </div>
-
-                        <!-- Botones de acción -->
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary me-2">
-                                <i class="fas fa-search me-1"></i>Buscar
-                            </button>
-                            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-times me-1"></i>Limpiar filtros
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Tabla de resultados -->
-            <div class="card">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-primary">
-                                <tr>
-                                    <th scope="col">Pedido</th>
-                                    <th scope="col">Mesa</th>
-                                    <th scope="col">Cliente</th>
-                                    <th scope="col">Fecha</th>
-                                    <th scope="col">Total</th>
-                                    <th scope="col">Estado Pedido</th>
-                                    <th scope="col">Estado Pago</th>
-                                    <th scope="col" class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for pedido in pedidos %}
-                                <tr>
-                                    <td>#{{ pedido.id }}</td>
-                                    <td>{{ pedido.mesa.numero }}</td>
-                                    <td>{{ pedido.nombre_cliente }}</td>
-                                    <td>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</td>
-                                    <td>${{ pedido.monto_total|floatformat:0 }}</td>
-                                    <td>
-                                        <span class="badge 
-                                            {% if pedido.estado == 'pendiente' %}bg-warning
-                                            {% elif pedido.estado == 'en_preparacion' %}bg-info
-                                            {% elif pedido.estado == 'listo' %}bg-success
-                                            {% elif pedido.estado == 'entregado' %}bg-primary
-                                            {% else %}bg-danger{% endif %}">
-                                            {{ pedido.get_estado_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge 
-                                            {% if pedido.estado_pago == 'pendiente' %}bg-warning
-                                            {% elif pedido.estado_pago == 'pagado' %}bg-success
-                                            {% else %}bg-danger{% endif %}">
-                                            {{ pedido.get_estado_pago_display }}
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <a href="{% url 'orders:detalle_pedido' pedido.id %}" class="btn btn-sm btn-outline-primary me-1">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
-                                        <a href="{% url 'orders:imprimir_recibo_pedido' pedido.id %}" class="btn btn-sm bg-white text-success border-0 shadow-sm me-1" title="Imprimir boleta">
-                                            <i class="fas fa-file-invoice"></i> Imprimir
-                                        </a>                                     
-                                        <a href="{% url 'orders:confirmar_eliminar_venta' pedido.id %}" class="btn btn-sm btn-outline-danger" {% if pedido.estado_pago not in 'pendiente,cancelado' %}title="No se puede eliminar pedidos pagados" data-bs-toggle="tooltip"{% endif %}>
-                                            <i class="fas fa-trash-alt"></i> Eliminar
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="8" class="text-center py-4">
-                                        <div class="alert alert-info mb-0" role="alert">
-                                            {% if query or estado_filtro or estado_pago_filtro or fecha_desde or fecha_hasta or mesa_filtro %}
-                                                <i class="fas fa-search me-2"></i>No se encontraron pedidos que coincidan con los criterios de búsqueda.
-                                                <br>
-                                                <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-sm btn-outline-primary mt-2">
-                                                    Ver todos los pedidos
-                                                </a>
-                                            {% else %}
-                                                No hay pedidos registrados
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- Tabla -->
+  <div class="po-table-card">
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Mesa</th>
+            <th>Cliente</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Pago</th>
+            <th style="text-align:center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pedido in pedidos %}
+          <tr>
+            <td class="td-id">#{{ pedido.id }}</td>
+            <td class="td-mesa">{{ pedido.mesa.numero }}</td>
+            <td>{{ pedido.nombre_cliente }}</td>
+            <td class="td-date">{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</td>
+            <td class="td-total">S/ {{ pedido.monto_total|floatformat:2 }}</td>
+            <td>
+              <span class="badge st-{{ pedido.estado }}">
+                {{ pedido.get_estado_display }}
+              </span>
+            </td>
+            <td>
+              <span class="badge py-{{ pedido.estado_pago }}">
+                {{ pedido.get_estado_pago_display }}
+              </span>
+            </td>
+            <td>
+              <div class="actions">
+                <a href="{% url 'orders:detalle_pedido' pedido.id %}" class="btn-act act-ver">
+                  <i class="fas fa-eye"></i> Ver
+                </a>
+                <a href="{% url 'orders:imprimir_recibo_pedido' pedido.id %}" class="btn-act act-print" title="Imprimir boleta">
+                  <i class="fas fa-file-invoice"></i> Boleta
+                </a>
+                <a href="{% url 'orders:confirmar_eliminar_venta' pedido.id %}" class="btn-act act-del"
+                   {% if pedido.estado_pago not in 'pendiente,cancelado' %}
+                     title="No se puede eliminar pedidos pagados" data-bs-toggle="tooltip"
+                   {% endif %}>
+                  <i class="fas fa-trash-alt"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="ico"><i class="fas fa-receipt"></i></div>
+                <p>
+                  {% if query or mesa_filtro or fecha_desde or fecha_hasta %}
+                    No se encontraron pedidos con esos filtros.
+                    <br>
+                    <a href="{% url 'orders:todos_los_pedidos' %}">Ver todos los pedidos</a>
+                  {% else %}
+                    No hay pedidos registrados aún.
+                  {% endif %}
+                </p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </div>
+
+  <!-- Paginación -->
+  {% if pedidos.paginator.num_pages > 1 %}
+  <div class="pag-wrap">
+    <span class="pag-info">
+      Mostrando {{ pedidos.start_index }}–{{ pedidos.end_index }} de {{ total_resultados }} pedidos
+    </span>
+    <ul class="pag-list">
+
+      <li class="{% if not pedidos.has_previous %}disabled{% endif %}">
+        {% if pedidos.has_previous %}
+          <a href="?{% if query %}q={{ query }}&{% endif %}{% if mesa_filtro %}mesa={{ mesa_filtro }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ pedidos.previous_page_number }}">
+            <i class="fas fa-chevron-left"></i>
+          </a>
+        {% else %}
+          <span><i class="fas fa-chevron-left"></i></span>
+        {% endif %}
+      </li>
+
+      {% for num in pedidos.paginator.page_range %}
+        {% if pedidos.number == num %}
+          <li class="active"><span>{{ num }}</span></li>
+        {% elif num > pedidos.number|add:'-3' and num < pedidos.number|add:'3' %}
+          <li>
+            <a href="?{% if query %}q={{ query }}&{% endif %}{% if mesa_filtro %}mesa={{ mesa_filtro }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ num }}">{{ num }}</a>
+          </li>
+        {% elif num == 1 or num == pedidos.paginator.num_pages %}
+          <li>
+            <a href="?{% if query %}q={{ query }}&{% endif %}{% if mesa_filtro %}mesa={{ mesa_filtro }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ num }}">{{ num }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+
+      <li class="{% if not pedidos.has_next %}disabled{% endif %}">
+        {% if pedidos.has_next %}
+          <a href="?{% if query %}q={{ query }}&{% endif %}{% if mesa_filtro %}mesa={{ mesa_filtro }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ pedidos.next_page_number }}">
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        {% else %}
+          <span><i class="fas fa-chevron-right"></i></span>
+        {% endif %}
+      </li>
+
+    </ul>
+  </div>
+  {% endif %}
+
 </div>
 
 {% block extra_js %}
 <script>
-    // Inicializar tooltips de Bootstrap
-    document.addEventListener('DOMContentLoaded', function() {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
+document.addEventListener('DOMContentLoaded', function () {
 
-        // Auto-submit del formulario cuando se cambian los filtros (opcional)
-        const selectFilters = document.querySelectorAll('#mesa');
-        selectFilters.forEach(function(select) {
-            select.addEventListener('change', function() {
-                // Descomenta la siguiente línea si quieres que se envíe automáticamente
-                // this.form.submit();
-            });
-        });
+  // ── Toggle filtros ────────────────────────────────────────
+  const toggle = document.getElementById('filterToggle');
+  const body   = document.getElementById('filterBody');
 
-        // Validación de fechas
-        const fechaDesde = document.getElementById('fecha_desde');
-        const fechaHasta = document.getElementById('fecha_hasta');
-        
-        fechaDesde.addEventListener('change', function() {
-            if (fechaHasta.value && this.value > fechaHasta.value) {
-                alert('La fecha desde no puede ser mayor que la fecha hasta');
-                this.value = '';
-            }
-        });
+  // Si hay filtros activos en la URL, abrir el panel automáticamente
+  const params = new URLSearchParams(window.location.search);
+  const hasFilters = params.get('q') || params.get('mesa') || 
+                     params.get('fecha_desde') || params.get('fecha_hasta');
 
-        fechaHasta.addEventListener('change', function() {
-            if (fechaDesde.value && this.value < fechaDesde.value) {
-                alert('La fecha hasta no puede ser menor que la fecha desde');
-                this.value = '';
-            }
-        });
+  if (hasFilters) {
+    toggle.classList.add('open');
+    body.classList.add('open');
+  }
+
+  toggle.addEventListener('click', function () {
+    this.classList.toggle('open');
+    body.classList.toggle('open');
+  });
+
+  // ── Tooltips Bootstrap ────────────────────────────────────
+  var tips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tips.forEach(function(el) {
+    if (typeof bootstrap !== 'undefined') new bootstrap.Tooltip(el);
+  });
+
+  // ── Validación de rango de fechas ─────────────────────────
+  const desde = document.getElementById('fecha_desde');
+  const hasta = document.getElementById('fecha_hasta');
+
+  if (desde && hasta) {
+    desde.addEventListener('change', function () {
+      if (hasta.value && this.value > hasta.value) {
+        alert('La fecha "Desde" no puede ser posterior a "Hasta".');
+        this.value = '';
+      }
     });
+
+    hasta.addEventListener('change', function () {
+      if (desde.value && this.value < desde.value) {
+        alert('La fecha "Hasta" no puede ser anterior a "Desde".');
+        this.value = '';
+      }
+    });
+  }
+
+  // ── Auto-submit al cambiar mesa ───────────────────────────
+  const mesaSelect = document.getElementById('mesa');
+  if (mesaSelect) {
+    mesaSelect.addEventListener('change', function () {
+      this.form.submit();
+    });
+  }
+
+});
 </script>
 {% endblock %}
 {% endblock %}
