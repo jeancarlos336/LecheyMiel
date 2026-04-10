@@ -242,10 +242,10 @@ def tomar_pedido(request, mesa_id):
                         )
 
                     # NUEVA LÓGICA: Si el producto NO es de cocina, marcarlo automáticamente como entregado
-                        nuevo_detalle.estado = 'entregado'
-                        nuevo_detalle.hora_listo = timezone.now()
-                        nuevo_detalle.hora_entrega = timezone.now()
-                        nuevo_detalle.save()
+                    nuevo_detalle.estado = 'entregado'
+                    nuevo_detalle.hora_listo = timezone.now()
+                    nuevo_detalle.hora_entrega = timezone.now()
+                    nuevo_detalle.save()
 
                     pedido_existente.calcular_total()
                     
@@ -904,6 +904,7 @@ def auto_entregar_productos_no_cocina(pedido):
         
         
 #informes
+@login_required
 def informe_ventas(request):
     # Valores predeterminados
     fecha_inicio = request.GET.get('fecha_inicio', '')
@@ -1620,7 +1621,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
             items_carrito = request.POST.getlist('items_carrito')
             
             # DEBUG: Agregar logging para ver qué se está recibiendo
-            print(f"DEBUG: items_carrito recibidos: {items_carrito}")
+           
             
             # VALIDAR STOCK ANTES DE CREAR EL PEDIDO
             productos_sin_stock = []
@@ -1644,42 +1645,39 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                         print(f"DEBUG: Producto no encontrado: {producto_id}")
                         continue
                     
-                    print(f"DEBUG: Procesando producto: {producto.nombre}, cantidad: {cantidad}")
+            
                     
                     # Verificar stock solo si el producto tiene control de stock
                     stock_producto = getattr(producto, 'stock', None)
                     
                     if stock_producto:
                         # Producto con control de stock
-                        print(f"DEBUG: Stock disponible para {producto.nombre}: {stock_producto.cantidad_actual}")
-                        
+                                                
                         if stock_producto.cantidad_actual < cantidad:
                             productos_sin_stock.append({
                                 'nombre': producto.nombre,
                                 'solicitado': cantidad,
                                 'disponible': stock_producto.cantidad_actual
                             })
-                            print(f"DEBUG: Stock insuficiente para {producto.nombre}")
+                            
                         else:
                             items_validados.append({
                                 'producto': producto,
                                 'cantidad': cantidad
                             })
-                            print(f"DEBUG: Stock suficiente para {producto.nombre}")
+                           
                     else:
                         # Producto sin control de stock - siempre válido
                         items_validados.append({
                             'producto': producto,
                             'cantidad': cantidad
                         })
-                        print(f"DEBUG: Producto sin control de stock: {producto.nombre}")
+
                         
                 except (ValueError, TypeError) as e:
                     print(f"DEBUG: Error al procesar item {item}: {e}")
                     continue
             
-            print(f"DEBUG: Items validados: {len(items_validados)}")
-            print(f"DEBUG: Productos sin stock: {len(productos_sin_stock)}")
             
             # Si hay productos sin stock, devolver error
             if productos_sin_stock:
@@ -1726,7 +1724,6 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                 )
                 pedido.save()  # Guardar para generar número automático
                 
-                print(f"DEBUG: Pedido creado con ID: {pedido.id}")
                 
                 # Crear detalles del pedido
                 detalles = []
@@ -1735,7 +1732,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                         producto = item['producto']
                         cantidad = item['cantidad']
                         
-                        print(f"DEBUG: Creando detalle para {producto.nombre}")
+                   
                         
                         # Determinar el estado inicial del detalle del pedido
                         estado_detalle = 'listo'
@@ -1757,8 +1754,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                 # Calcular el total del pedido
                 pedido.calcular_total()
                 
-                print(f"DEBUG: Total del pedido: {pedido.monto_total}")
-                
+                   
                 # Procesar según el estado de pago
                 if estado_pago == 'pagado':
                     metodo_pago = request.POST.get('metodo_pago', 'efectivo')
@@ -1814,7 +1810,6 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                     pedido.estado = 'completado'
                     pedido.save()
                 
-                print(f"DEBUG: Pedido completado exitosamente")
                 
                 # Si es una petición AJAX, devolver éxito
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -2691,15 +2686,16 @@ def confirmar_eliminar_venta(request, pedido_id):
 
 
 
-
 #####################RANKING DE VENTAS PRODUTUCTOS
 
 
+@login_required
 def ranking_productos_view(request):
     """Vista principal para mostrar el formulario de selección de fechas"""
     return render(request, 'orders/pedidos/ranking_productos.html')
 
 
+@login_required
 def ranking_productos_data(request):
     """API endpoint que devuelve los datos del ranking"""
     fecha_inicio = request.GET.get('fecha_inicio')

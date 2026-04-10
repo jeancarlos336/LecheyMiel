@@ -24,13 +24,15 @@ import json
 
 
 # Vistas para Proveedor
-class ProveedorListView(ListView):
+
+class ProveedorListView(LoginRequiredMixin, ListView):
     model = Proveedor
     template_name = 'compras/proveedor_list.html'
     context_object_name = 'proveedores'
     ordering = ['nombre']
+    
 
-class ProveedorDetailView(DetailView):
+class ProveedorDetailView(LoginRequiredMixin, DetailView):
     model = Proveedor
     template_name = 'compras/proveedor_detail.html'
     context_object_name = 'proveedor'
@@ -73,7 +75,7 @@ class ProveedorDeleteView(LoginRequiredMixin, DeleteView):
 
 
 
-class CompraListView(ListView):
+class CompraListView(LoginRequiredMixin, ListView):
     model = Compra
     template_name = 'compras/compra_list.html'
     context_object_name = 'compras'
@@ -196,7 +198,7 @@ class CompraListView(ListView):
         return context
 
 
-class CompraDetailView(DetailView):
+class CompraDetailView(LoginRequiredMixin, DetailView):
     model = Compra
     template_name = 'compras/compra_detail.html'
     context_object_name = 'compra'

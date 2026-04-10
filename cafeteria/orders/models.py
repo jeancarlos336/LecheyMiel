@@ -131,21 +131,30 @@ class Pedido(models.Model):
     @property
     def items_activos(self):
         """Devuelve solo los detalles del pedido que no están cancelados"""
-        return self.detalles.all().exclude(estado='cancelado')
-    
+        return self.detalles.all().exclude(estado='cancelado')   
+
+        
     def save(self, *args, **kwargs):
         """Sobrescribe el método save para generar un número de orden automático si es necesario"""
         if not self.mesa and not self.numero_orden:
+            from django.db import transaction
             fecha_actual = timezone.now()
-            
-            ultimo_numero = Pedido.objects.filter(
-                tipo_orden=self.tipo_orden, 
-                fecha_creacion__date=fecha_actual.date()
-            ).count() + 1
-            
             fecha_str = fecha_actual.strftime('%Y%m%d')
-            self.numero_orden = f"{self.tipo_orden.codigo}-{fecha_str}-{ultimo_numero:03d}"
-        
+
+            with transaction.atomic():
+                ultimo_numero = (
+                    Pedido.objects
+                    .select_for_update()
+                    .filter(
+                        tipo_orden=self.tipo_orden,
+                        fecha_creacion__date=fecha_actual.date()
+                    )
+                    .count() + 1
+                )
+                self.numero_orden = f"{self.tipo_orden.codigo}-{fecha_str}-{ultimo_numero:03d}"
+                super().save(*args, **kwargs)
+            return
+
         super().save(*args, **kwargs)
    
     class Meta:
@@ -181,29 +190,34 @@ class DetallePedido(models.Model):
         """Subtotal de venta (cantidad × precio_unitario)"""
         return self.cantidad * self.precio_unitario
     
+    
     # NUEVAS PROPIEDADES PARA CÁLCULOS DE COSTO Y GANANCIA
     @property
     def costo_total_detalle(self):
-        """Costo total de este detalle (cantidad × costo del producto)"""
-        return self.cantidad * self.producto.costo
-    
+        """Costo total de este detalle (cantidad × costo del producto). Retorna 0 si el costo no está configurado."""
+        costo = self.producto.costo or 0
+        return self.cantidad * costo
+
     @property
     def ganancia_detalle(self):
         """Ganancia de este detalle (subtotal - costo_total_detalle)"""
         return self.subtotal - self.costo_total_detalle
-    
+
     @property
     def ganancia_unitaria(self):
-        """Ganancia por unidad (precio_unitario - costo del producto)"""
+        """Ganancia por unidad (precio_unitario - costo del producto). Retorna None si el costo no está configurado."""
+        if self.producto.costo is None:
+            return None
         return self.precio_unitario - self.producto.costo
-    
+
     @property
     def margen_detalle(self):
-        """Margen de ganancia de este detalle en porcentaje"""
-        if self.producto.costo > 0:
-            return (self.ganancia_unitaria / self.producto.costo) * 100
-        return 0
-    
+        """Margen de ganancia de este detalle en porcentaje. Retorna 0 si el costo no está configurado o es cero."""
+        if not self.producto.costo:
+            return 0
+        return (self.ganancia_unitaria / self.producto.costo) * 100
+     
+
     @property
     def area_preparacion(self):
         """Devuelve el área de preparación del producto"""
@@ -327,35 +341,36 @@ class Pago(models.Model):
     
     def calcular_costos_y_ganancia(self):
         """
-        Calcula automáticamente el costo total y la ganancia
-        basándose en los productos del pedido
+        Calcula el costo total y la ganancia basándose en los productos del pedido.
+        Usa precio_unitario del detalle (precio histórico al momento de la venta)
+        y el costo vigente del producto. No modifica self.monto para no
+        sobreescribir el monto real cobrado ni el cambio calculado en la vista.
         """
         costo_total = 0
         total_venta = 0
-        
-        # Iterar sobre los detalles del pedido (productos no cancelados)
+
         for detalle in self.pedido.items_activos:
-            # Costo: cantidad × costo del producto
-            costo_total += detalle.cantidad * detalle.producto.costo
-            # Venta: cantidad × precio de venta
-            total_venta += detalle.cantidad * detalle.producto.precio
-        
-        # Asignar valores calculados
+            # Usar precio_unitario: el precio que tenía el producto al momento de la venta,
+            # no el precio actual del catálogo (que puede haber cambiado)
+            total_venta += detalle.cantidad * detalle.precio_unitario
+
+            # El costo del producto puede ser NULL si no fue configurado
+            costo_unitario = detalle.producto.costo or 0
+            costo_total += detalle.cantidad * costo_unitario
+
         self.costo_total = costo_total
         self.total_venta = total_venta
         self.ganancia = total_venta - costo_total
+        # self.monto NO se toca aquí: su valor correcto (monto cobrado al cliente)
+        # ya fue asignado en la vista antes de llamar a save()
         
-        # También actualizar el monto (por consistencia)
-        self.monto = total_venta
-    
+        
     def save(self, *args, **kwargs):
         """
         Sobrescribir save para calcular automáticamente
-        costos y ganancia antes de guardar
+        costos y ganancia antes de guardar.
         """
-        # Calcular automáticamente los valores
         self.calcular_costos_y_ganancia()
-        
         super().save(*args, **kwargs)
     
     @property

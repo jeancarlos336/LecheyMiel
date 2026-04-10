@@ -91,17 +91,21 @@ class Producto(models.Model):
         """Devuelve el área de preparación del producto basado en su categoría"""
         return self.categoria.area_preparacion
     
+
     @property
     def ganancia_unitaria(self):
-        """Ganancia por unidad del producto"""
+        """Ganancia por unidad del producto. Retorna None si el costo no está configurado."""
+        if self.costo is None:
+            return None
         return self.precio - self.costo
-    
+
     @property
     def margen_porcentaje(self):
-        """Margen de ganancia en porcentaje"""
-        if self.costo > 0:
-            return ((self.precio - self.costo) / self.costo) * 100
-        return 0
+        """Margen de ganancia en porcentaje. Retorna 0 si el costo no está configurado o es cero."""
+        if not self.costo:
+            return 0
+        return ((self.precio - self.costo) / self.costo) * 100
+    
     
     class Meta:
         verbose_name = "Producto"
