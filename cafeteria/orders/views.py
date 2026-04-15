@@ -214,7 +214,7 @@ def tomar_pedido(request, mesa_id):
                     if detalle_existente:
                         # Verificar stock para la nueva cantidad total
                         nueva_cantidad_total = detalle_existente.cantidad + cantidad
-                        if stock_producto and not stock_producto.puede_vender(cantidad):
+                        if stock_producto and not stock_producto.puede_vender(nueva_cantidad_total):
                             error_msg = f"Stock insuficiente para {producto.nombre}. Stock disponible: {stock_producto.cantidad_actual}"
                             
                             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
