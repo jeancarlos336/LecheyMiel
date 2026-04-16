@@ -2,8 +2,6 @@
 
 {% block content %}
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
-
   :root {
     --bg:        #f7f8fc;
     --surface:   #ffffff;
@@ -27,12 +25,18 @@
     --r:  10px;
     --rs: 7px;
     --shadow: 0 1px 4px rgba(28,31,54,.07), 0 4px 16px rgba(28,31,54,.05);
+
+    /* Fuentes del sistema — sin Google Fonts */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', 'Menlo',
+                 'Liberation Mono', monospace;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .po-wrap {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-sans);
     color: var(--text);
     max-width: 1400px;
     margin: 0 auto;
@@ -76,7 +80,7 @@
     padding: 5px 14px;
     font-size: .8rem;
     font-weight: 700;
-    font-family: 'Fira Code', monospace;
+    font-family: var(--font-mono);
   }
 
   /* ── Alerts ─────────────────────────── */
@@ -113,7 +117,7 @@
     align-items: center;
     justify-content: space-between;
     cursor: pointer;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: .875rem;
     font-weight: 700;
     color: var(--text);
@@ -154,7 +158,7 @@
     border: 1px solid var(--border);
     border-radius: var(--rs);
     padding: .55rem .85rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: .875rem;
     color: var(--text);
     outline: none;
@@ -175,7 +179,7 @@
     border: none;
     padding: .55rem 1.1rem;
     border-radius: var(--rs);
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: .8rem;
     font-weight: 700;
     cursor: pointer;
@@ -193,7 +197,7 @@
     border: 1px solid var(--border);
     padding: .55rem 1rem;
     border-radius: var(--rs);
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-sans);
     font-size: .8rem;
     font-weight: 600;
     text-decoration: none;
@@ -223,7 +227,7 @@
     padding: 3px 10px;
     font-size: .72rem;
     font-weight: 700;
-    font-family: 'Fira Code', monospace;
+    font-family: var(--font-mono);
   }
 
   /* ── Table card ──────────────────────── */
@@ -270,20 +274,20 @@
   }
 
   .td-id {
-    font-family: 'Fira Code', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
     color: var(--accent);
     font-size: .8rem;
   }
 
   .td-mesa {
-    font-family: 'Fira Code', monospace;
+    font-family: var(--font-mono);
     font-weight: 700;
     font-size: .82rem;
   }
 
   .td-total {
-    font-family: 'Fira Code', monospace;
+    font-family: var(--font-mono);
     font-weight: 700;
     font-size: .88rem;
     color: var(--text);
@@ -318,7 +322,7 @@
   }
 
   /* ── Status badges - específicos para ganarle a Bootstrap ── */
-  .po-wrap .badge { 
+  .po-wrap .badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -405,7 +409,7 @@
   .pag-info {
     font-size: .75rem;
     color: var(--muted);
-    font-family: 'Fira Code', monospace;
+    font-family: var(--font-mono);
   }
 
   .pag-list {
@@ -662,7 +666,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Si hay filtros activos en la URL, abrir el panel automáticamente
   const params = new URLSearchParams(window.location.search);
-  const hasFilters = params.get('q') || params.get('mesa') || 
+  const hasFilters = params.get('q') || params.get('mesa') ||
                      params.get('fecha_desde') || params.get('fecha_hasta');
 
   if (hasFilters) {

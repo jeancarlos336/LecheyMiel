@@ -4,9 +4,26 @@
 
 {% block content %}
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  /*
+   * ⚠️  FUENTES: Se eliminó el @import de Google Fonts (Sora + JetBrains Mono).
+   *     Si necesitas estas fuentes localmente, descárgalas y declara @font-face
+   *     en tu CSS estático, o agrega los archivos .woff2 a /static/fonts/.
+   *     Por ahora se usan fallbacks del sistema que cargan SIEMPRE offline.
+   *
+   *     Sora       → fallback: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+   *     JetBrains  → fallback: 'Courier New', Courier, monospace
+   *
+   *     Para agregar las fuentes localmente:
+   *       1. Descarga Sora desde fonts.google.com/specimen/Sora
+   *       2. Descarga JetBrains Mono desde fonts.google.com/specimen/JetBrains+Mono
+   *       3. Coloca los .woff2 en /static/fonts/
+   *       4. Reemplaza estas líneas con @font-face declarations
+   */
 
   :root {
+    --font-sans: 'Sora', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', Courier, monospace;
+
     --bg: #f4f6fb;
     --surface: #ffffff;
     --surface2: #f0f2f8;
@@ -26,7 +43,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Sora', sans-serif;
+    font-family: var(--font-sans);
     background: var(--bg);
     color: var(--text);
   }
@@ -125,7 +142,7 @@
     color: var(--text);
     padding: 0.65rem 1rem 0.65rem 2.6rem;
     border-radius: var(--radius-sm);
-    font-family: 'Sora', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.9rem;
     transition: border-color 0.2s, box-shadow 0.2s;
     outline: none;
@@ -143,7 +160,7 @@
     border: none;
     padding: 0.65rem 1.3rem;
     border-radius: var(--radius-sm);
-    font-family: 'Sora', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
@@ -158,7 +175,7 @@
     border: 1px solid var(--border);
     padding: 0.65rem 1.1rem;
     border-radius: var(--radius-sm);
-    font-family: 'Sora', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
@@ -187,7 +204,7 @@
     padding: 4px 12px;
     font-size: 0.78rem;
     color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
   }
 
   .stat-chip strong { color: var(--text); }
@@ -240,13 +257,13 @@
   .td-nombre { font-weight: 600; }
 
   .td-precio {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     color: var(--success);
     font-size: 0.9rem;
   }
 
   .td-costo {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     color: var(--text-muted);
     font-size: 0.875rem;
   }
@@ -254,7 +271,7 @@
   .td-muted { color: var(--text-muted); }
 
   .td-margen {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--accent);
@@ -279,7 +296,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.82rem;
     font-weight: 600;
     padding: 3px 9px;
@@ -349,7 +366,7 @@
   .pagination-info {
     font-size: 0.8rem;
     color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
   }
 
   .pagination {
