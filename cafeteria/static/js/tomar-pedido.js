@@ -351,10 +351,25 @@ function updateCantidad(detalleId, action) {
         },
         body: formData.toString()
     })
+
     .then(response => response.json())
     .then(data => {
         if (data && data.success) {
             updateCartTotals(detalleId, data);
+        } else if (data && !data.success) {
+            // Revertir la actualización optimista
+            if (action === 'incrementar') {
+                cantidadElement.textContent = cantidad - 1;
+            } else {
+                cantidadElement.textContent = cantidad + 1;
+            }
+            // Mostrar alerta de stock insuficiente
+            Swal.fire({
+                icon: 'warning',
+                title: 'Stock insuficiente',
+                text: data.error || 'No hay suficiente stock disponible',
+                confirmButtonColor: '#3085d6'
+            });
         }
     })
     .catch(error => {
