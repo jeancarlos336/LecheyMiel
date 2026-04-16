@@ -363,17 +363,21 @@ def tomar_pedido(request, mesa_id):
                     producto = detalle.producto
                     stock_producto = getattr(producto, 'stock', None)
                     
+                           
+                                
                     if stock_producto:
                         cantidad_actual = detalle.cantidad
                         diferencia = cantidad - cantidad_actual
-                        
+
                         if diferencia > 0:  # Aumentar cantidad
+                            # Verificar si hay stock para la diferencia adicional,
+                            # no para la cantidad total (que ya fue parcialmente descontada)
                             if not stock_producto.puede_vender(diferencia):
                                 return JsonResponse({
                                     'success': False,
-                                    'error': f'Stock insuficiente para {producto.nombre}. Stock disponible: {stock_producto.cantidad_actual}'
-                                }, status=400)
-                    
+                                    'error': f'Stock insuficiente para {producto.nombre}. Stock disponible: {stock_producto.cantidad_actual + cantidad_actual}'
+                                }, status=400)        
+                                                 
                     detalle.cantidad = cantidad
                     detalle.save()
                     pedido_existente.calcular_total()
