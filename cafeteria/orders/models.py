@@ -99,11 +99,12 @@ class Pedido(models.Model):
         return sum(detalle.subtotal for detalle in self.detalles.all().exclude(estado='cancelado'))
     
     # NUEVOS MÉTODOS PARA CALCULAR COSTOS Y GANANCIA
+   
     def calcular_costo_total(self):
-        """Calcula el costo total del pedido"""
+        """Calcula el costo total del pedido. Trata costo NULL como cero."""
         costo_total = 0
         for detalle in self.items_activos:
-            costo_total += detalle.cantidad * detalle.producto.costo
+            costo_total += detalle.cantidad * (detalle.producto.costo or 0)
         return costo_total
     
     def calcular_ganancia_total(self):
@@ -397,3 +398,4 @@ class PagoPendiente(models.Model):
     
     def get_absolute_url(self):
         return reverse('orders:pagos_pendientes')
+    

@@ -980,13 +980,22 @@ def completar_pago(request, pedido_id):
             metodo=metodo_pago
         )
         
+
         if metodo_pago == 'efectivo':
             monto_recibido = float(request.POST.get('monto_recibido', 0))
+            
+            # Validar que el monto recibido sea suficiente para cubrir el total
+            if monto_recibido < float(pedido.monto_total):
+                messages.error(request, 
+                    f"El monto recibido (${monto_recibido:,.0f}) es menor al total del pedido (${pedido.monto_total:,.0f}).")
+                return redirect('orders:procesar_pago', pedido_id=pedido.id)
+            
             cambio = monto_recibido - float(pedido.monto_total)
             
             pago.monto_recibido = monto_recibido
             pago.cambio = cambio
-            pago.notas = f"Pago en efectivo. Monto recibido: ${monto_recibido}, Cambio: ${cambio}"
+            pago.notas = f"Pago en efectivo. Monto recibido: ${monto_recibido:,.0f}, Cambio: ${cambio:,.0f}"
+            
         elif metodo_pago == 'tarjeta':
             # Simplemente registrar que se pagó con tarjeta usando POS externo
             pago.notas = "Pago con tarjeta usando terminal POS externa"
@@ -1770,12 +1779,20 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                         metodo=metodo_pago,
                         fecha=timezone.now()
                     )
-                    
+
                     if metodo_pago == 'efectivo' and monto_recibido:
                         monto_recibido = Decimal(monto_recibido)
+                        
+                        # Validar que el monto recibido cubra el total
+                        if monto_recibido < pedido.monto_total:
+                            return JsonResponse({
+                                'success': False,
+                                'error': f"El monto recibido (${monto_recibido:,.0f}) es menor al total del pedido (${pedido.monto_total:,.0f})."
+                            }, status=400)
+                        
                         pago.monto_recibido = monto_recibido
-                        pago.cambio = monto_recibido - pedido.monto_total if monto_recibido > pedido.monto_total else 0
-                    
+                        pago.cambio = monto_recibido - pedido.monto_total
+
                     pago.save()
                     
                     # Actualizar el pedido para reflejar quién lo cobró
