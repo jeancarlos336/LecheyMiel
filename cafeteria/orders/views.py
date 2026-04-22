@@ -999,62 +999,63 @@ def completar_pago(request, pedido_id):
         elif metodo_pago == 'tarjeta':
             # Simplemente registrar que se pagó con tarjeta usando POS externo
             pago.notas = "Pago con tarjeta usando terminal POS externa"
+            
         elif metodo_pago == 'pendiente':
-            # Guardar el pago básico primero
-            pago.notas = "Pago pendiente"
-            pago.save()
+            with transaction.atomic():
+                # Guardar el pago básico primero
+                pago.notas = "Pago pendiente"
+                pago.save()
+                
+                # Crear registro en PagoPendiente                          
+              
+                cliente_nombre = request.POST.get('cliente_nombre', '')
+                # Si no se ingresa fecha, se establece 30 días desde hoy como plazo razonable
+                fecha_promesa = request.POST.get('fecha_promesa') or (timezone.now().date() + timezone.timedelta(days=30)).isoformat()
+                notas_adicionales = request.POST.get('notas_adicionales', '')
+                
+                PagoPendiente.objects.create(
+                    pago=pago,
+                    cliente_nombre=cliente_nombre,
+                    fecha_promesa=fecha_promesa,
+                    notas_adicionales=notas_adicionales
+                )
+                
+                pedido.estado_pago = 'impago'
+                pedido.estado = 'completado'
+                pedido.save()
+                
+                # Liberar la mesa marcándola como disponible
+                mesa = pedido.mesa
+                if mesa and pedido.tipo_orden.codigo == 'LOCAL':
+                    mesa.estado = 'disponible'
+                    mesa.save()
+                    messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente. '
+                                        f'La mesa {mesa.numero} está disponible.')
+                else:
+                    messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente.')
             
-            # Crear registro en PagoPendiente
-            cliente_nombre = request.POST.get('cliente_nombre', '')
-            fecha_promesa = request.POST.get('fecha_promesa', '')
-            notas_adicionales = request.POST.get('notas_adicionales', '')
-            
-            PagoPendiente.objects.create(
-                pago=pago,
-                cliente_nombre=cliente_nombre,
-                fecha_promesa=fecha_promesa,
-                notas_adicionales=notas_adicionales
-            )
-            
-            # No necesitamos continuar con el save de pago aquí ya que ya lo hemos guardado
-            # Actualizar estado del pedido
-            
-            pedido.estado_pago = 'impago'
-            pedido.estado = 'completado'
-            pedido.save()
-            
-            # Liberar la mesa marcándola como disponible
-            mesa = pedido.mesa
-            if mesa and pedido.tipo_orden.codigo == 'LOCAL':
-                mesa.estado = 'disponible'
-                mesa.save()
-                messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente. '
-                                    f'La mesa {mesa.numero} está disponible.')
-            else:
-                messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente.')
-        
             if imprimir_recibo:
                 return redirect('orders:imprimir_recibo', pago_id=pago.id)
             
             return redirect('orders:todos_los_pedidos')
         
         # Si no es pendiente, seguimos con el flujo normal para efectivo y tarjeta
-        pedido.estado = 'completado'
-        pago.save()
-        
-        # Actualizar estado del pedido
-        pedido.estado_pago = 'pagado'
-        pedido.save()
-        
-        # Liberar la mesa marcándola como disponible
-        mesa = pedido.mesa    
-        if mesa and pedido.tipo_orden.codigo == 'LOCAL':    
-            mesa.estado = 'disponible'
-            mesa.save()
-            messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente. '
-                                f'La mesa {mesa.numero} está disponible.')
-        else:
-            messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente.')
+        with transaction.atomic():
+            pedido.estado = 'completado'
+            pago.save()
+            
+            pedido.estado_pago = 'pagado'
+            pedido.save()
+            
+            # Liberar la mesa marcándola como disponible
+            mesa = pedido.mesa    
+            if mesa and pedido.tipo_orden.codigo == 'LOCAL':    
+                mesa.estado = 'disponible'
+                mesa.save()
+                messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente. '
+                                    f'La mesa {mesa.numero} está disponible.')
+            else:
+                messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente.')
         
         # Siempre imprimir recibo si está marcado
         if imprimir_recibo:
@@ -1644,7 +1645,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                 try:
                     # Validar formato del item
                     if ':' not in item:
-                        print(f"DEBUG: Item mal formateado: {item}")
+                        logger.warning(f"Item mal formateado: {item}")
                         continue
                         
                     producto_id, cantidad = item.split(':')
@@ -1655,7 +1656,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                     try:
                         producto = Producto.objects.get(id=producto_id)
                     except Producto.DoesNotExist:
-                        print(f"DEBUG: Producto no encontrado: {producto_id}")
+                        logger.warning(f"Producto no encontrado: {producto_id}")
                         continue
                     
             
@@ -1688,7 +1689,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
 
                         
                 except (ValueError, TypeError) as e:
-                    print(f"DEBUG: Error al procesar item {item}: {e}")
+                    logger.error(f"Error al procesar item {item}: {e}")
                     continue
             
             
@@ -1761,7 +1762,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                        
                                             
                     except Exception as e:
-                        print(f"DEBUG: Error al procesar item {producto.nombre}: {e}")
+                        logger.error(f"Error al procesar item {producto.nombre}: {e}")
                         raise Exception(f"Error al procesar {producto.nombre}: {str(e)}")
                 
                 # Calcular el total del pedido
@@ -1804,8 +1805,8 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
                     # Crear registro de pago pendiente
                     metodo_pago = 'pendiente'
                     cliente_nombre = request.POST.get('nombre_cliente', '')
-                    FECHA_PROMESA_DEFAULT = '2060-12-31'
-                    fecha_promesa = request.POST.get('fecha_promesa', FECHA_PROMESA_DEFAULT)
+                    # Si no se ingresa fecha, se establece 30 días desde hoy como plazo
+                    fecha_promesa = request.POST.get('fecha_promesa') or (timezone.now().date() + timezone.timedelta(days=30)).isoformat()
                     notas_adicionales = request.POST.get('notas_adicionales', 'compromiso de pago')
                     
                     # Crear el pago básico
@@ -1846,7 +1847,7 @@ class CrearPedidoExpressView(LoginRequiredMixin, View):
         except Exception as e:
             # Manejar cualquier error inesperado
             error_msg = f"Error al crear el pedido: {str(e)}"
-            print(f"DEBUG: Error inesperado: {error_msg}")
+            logger.error(f"Error inesperado en venta express: {error_msg}")
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({

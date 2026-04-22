@@ -376,8 +376,8 @@ class Pago(models.Model):
     
     @property
     def margen_porcentaje(self):
-        """Margen de ganancia en porcentaje"""
-        if self.costo_total > 0:
+        """Margen de ganancia en porcentaje. Retorna 0 si costo_total es NULL o cero."""
+        if self.costo_total and self.costo_total > 0:
             return (self.ganancia / self.costo_total) * 100
         return 0
     

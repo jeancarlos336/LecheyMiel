@@ -124,7 +124,7 @@
 
     <div class="receipt-divider"></div>
 
-    <p><strong>Pedido #: {{ pedido.numero_orden }}</strong></p>
+    <p><strong>Pedido #: {{ pedido.numero_orden|default:"Sin número" }}</strong></p>
     <h4>{{ pedido.tipo_orden.nombre }}
         {% if pedido.nombre_cliente %} - Cliente: {{ pedido.nombre_cliente }}{% endif %}
     </h4>
