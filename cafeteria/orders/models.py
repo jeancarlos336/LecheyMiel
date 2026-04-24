@@ -87,17 +87,18 @@ class Pedido(models.Model):
         else:
             return f"Pedido #{self.id} - {self.tipo_orden.nombre} - {self.nombre_cliente or 'Sin nombre'}"
    
+    
     def calcular_total(self):
-        """Recalcula el total del pedido basado en sus detalles activos (no cancelados)"""
+        """Recalcula el total y lo persiste en BD. Usar solo cuando se necesita guardar el total."""
         total = sum(detalle.subtotal for detalle in self.detalles.all().exclude(estado='cancelado'))
         self.monto_total = total
         self.save()
         return total
-    
+
     def calcular_total_sin_guardar(self):
-        """Calcula el total del pedido sin guardar el modelo, útil para previsualización"""
+        """Calcula el total SIN hacer save(). Usar en respuestas AJAX donde solo se necesita el número."""
         return sum(detalle.subtotal for detalle in self.detalles.all().exclude(estado='cancelado'))
-    
+        
     # NUEVOS MÉTODOS PARA CALCULAR COSTOS Y GANANCIA
    
     def calcular_costo_total(self):
@@ -129,11 +130,17 @@ class Pedido(models.Model):
             return (self.calcular_ganancia_total() / costo_total) * 100
         return 0
     
-    @property
+    @property 
     def items_activos(self):
-        """Devuelve solo los detalles del pedido que no están cancelados"""
-        return self.detalles.all().exclude(estado='cancelado')   
-
+        """Devuelve solo los detalles del pedido que no están cancelados.
+        Incluye select_related para evitar queries extra al acceder a producto y categoría."""
+        return (
+            self.detalles
+            .select_related('producto', 'producto__categoria', 'producto__categoria__area_preparacion', 'producto__stock')
+            .exclude(estado='cancelado')
+        )
+        
+    
         
     def save(self, *args, **kwargs):
         """Sobrescribe el método save para generar un número de orden automático si es necesario"""

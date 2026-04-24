@@ -153,13 +153,7 @@ def tomar_pedido(request, mesa_id):
         messages.error(request, "No tienes permisos para tomar pedidos.")
         return redirect('home')
 
-    # Obtener categorías y productos disponibles
-    categorias = Categoria.objects.all()
-    productos_por_categoria = {
-        categoria: Producto.objects.filter(categoria=categoria, esta_disponible=True)
-        for categoria in categorias
-    }
-
+    
     if request.method == 'POST':
         with transaction.atomic():
             # Si no hay pedido existente, crear uno nuevo
@@ -247,7 +241,9 @@ def tomar_pedido(request, mesa_id):
                     nuevo_detalle.hora_entrega = timezone.now()
                     nuevo_detalle.save()
 
-                    pedido_existente.calcular_total()
+               
+                    total_actualizado = pedido_existente.calcular_total_sin_guardar()
+                    pedido_existente.monto_total = total_actualizado
                     
                     mensaje_estado = ""
                     if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
@@ -297,9 +293,11 @@ def tomar_pedido(request, mesa_id):
                         id=detalle_id,
                         pedido=pedido_existente
                     )
+                                       
                     producto_nombre = detalle.producto.nombre
                     detalle.delete()
-                    pedido_existente.calcular_total()
+                    total_actualizado = pedido_existente.calcular_total_sin_guardar()
+                    pedido_existente.monto_total = total_actualizado
                     
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({
@@ -399,6 +397,17 @@ def tomar_pedido(request, mesa_id):
                         'error': str(e)
                     }, status=400)
 
+    # Cargar catálogo solo para GET (renderizar la página)
+    # Las peticiones POST son AJAX y no necesitan el catálogo
+    categorias = Categoria.objects.all()
+    productos_por_categoria = {
+        categoria: Producto.objects.filter(
+            categoria=categoria,
+            esta_disponible=True
+        ).select_related('stock')
+        for categoria in categorias
+    }
+
     # Manejar parámetro de categoría activa
     categoria_activa = request.GET.get('categoria')
     if not categoria_activa and categorias.exists():
@@ -406,8 +415,8 @@ def tomar_pedido(request, mesa_id):
 
     # Recalcular total por si hubo cambios
     if pedido_existente:
-        pedido_existente.calcular_total()
-        total_pedido = pedido_existente.monto_total
+        total_pedido = pedido_existente.calcular_total_sin_guardar()
+        pedido_existente.monto_total = total_pedido
     else:
         total_pedido = 0
 
@@ -421,8 +430,7 @@ def tomar_pedido(request, mesa_id):
         'categoria_activa': int(categoria_activa) if categoria_activa else None
     }
     
-    return render(request, 'orders/pedidos/tomar_pedido.html', context)
-
+    return render(request, 'orders/pedidos/tomar_pedido.html', context)    
 
 @login_required
 def seleccionar_mesa(request):
