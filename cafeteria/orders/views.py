@@ -240,10 +240,8 @@ def tomar_pedido(request, mesa_id):
                     nuevo_detalle.hora_listo = timezone.now()
                     nuevo_detalle.hora_entrega = timezone.now()
                     nuevo_detalle.save()
-
                
-                    total_actualizado = pedido_existente.calcular_total_sin_guardar()
-                    pedido_existente.monto_total = total_actualizado
+                    pedido_existente.calcular_total()
                     
                     mensaje_estado = ""
                     if producto.categoria.area_preparacion.nombre == AreaPreparacion.COCINA:
@@ -296,8 +294,8 @@ def tomar_pedido(request, mesa_id):
                                        
                     producto_nombre = detalle.producto.nombre
                     detalle.delete()
-                    total_actualizado = pedido_existente.calcular_total_sin_guardar()
-                    pedido_existente.monto_total = total_actualizado
+
+                    pedido_existente.calcular_total()
                     
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({
