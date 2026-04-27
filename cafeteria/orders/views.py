@@ -397,7 +397,7 @@ def tomar_pedido(request, mesa_id):
 
     # Cargar catálogo solo para GET (renderizar la página)
     # Las peticiones POST son AJAX y no necesitan el catálogo
-    categorias = Categoria.objects.all()
+    categorias = Categoria.objects.all().select_related('area_preparacion')
     productos_por_categoria = {
         categoria: Producto.objects.filter(
             categoria=categoria,
@@ -1303,13 +1303,7 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
         messages.error(request, "Este no es un pedido para llevar.")
         return redirect('orders:seleccionar_tipo_orden')
     
-    # Obtener categorías y productos disponibles
-    categorias = Categoria.objects.all()
-    productos_por_categoria = {
-        categoria: Producto.objects.filter(categoria=categoria, esta_disponible=True)
-        for categoria in categorias
-    }
-
+    
     if request.method == 'POST':
         action = request.POST.get('action')
         
@@ -1531,20 +1525,31 @@ def tomar_pedido_para_llevar(request, tipo_orden_id, pedido_id):
                 }, status=500)
             messages.error(request, f'Error: {str(e)}')
 
+
+    # Cargar catálogo solo para GET — las peticiones AJAX retornan antes de llegar aquí
+    categorias = Categoria.objects.all().select_related('area_preparacion')
+    productos_por_categoria = {
+        categoria: Producto.objects.filter(
+            categoria=categoria,
+            esta_disponible=True
+        ).select_related('stock')
+        for categoria in categorias
+    }
+
     # Manejar parámetro de categoría activa
     categoria_activa = request.GET.get('categoria')
     if not categoria_activa and categorias.exists():
         categoria_activa = categorias.first().id
 
-    # Recalcular total
-    pedido.calcular_total()
-    
+    # Recalcular total solo para mostrar en pantalla, sin guardar
+    total_pedido = pedido.calcular_total_sin_guardar()
+
     context = {
         'tipo_orden': tipo_orden,
         'pedido_existente': pedido,
         'categorias': categorias,
         'productos_por_categoria': productos_por_categoria,
-        'total_pedido': pedido.monto_total,
+        'total_pedido': total_pedido,
         'categoria_activa': int(categoria_activa) if categoria_activa else None,
         'es_creacion': False
     }
