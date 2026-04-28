@@ -150,10 +150,10 @@ class Stock(models.Model):
                 motivo=motivo or "Entrada manual de stock"
             )
             return True
-        return False
-    
+        return False    
+  
     def descontar_stock(self, cantidad, motivo=""):
-        """Descuenta stock del producto"""
+        """Descuenta stock del producto. Lanza ValueError si no hay stock suficiente."""
         if self.cantidad_actual >= cantidad:
             self.cantidad_actual -= cantidad
             self.save()
@@ -166,7 +166,11 @@ class Stock(models.Model):
                 motivo=motivo or "Venta"
             )
             return True
-        return False
+        
+        raise ValueError(
+            f"Stock insuficiente para {self.producto.nombre}. "
+            f"Stock disponible: {self.cantidad_actual}, cantidad solicitada: {cantidad}"
+        )
     
     def puede_vender(self, cantidad):
         """Verifica si hay suficiente stock para vender"""
