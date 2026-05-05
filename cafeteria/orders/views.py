@@ -921,8 +921,10 @@ def informe_ventas(request):
     fecha_fin = request.GET.get('fecha_fin', '')
     metodo_pago = request.GET.get('metodo_pago', '')
     
-    # Preparar consulta base
-    pagos = Pago.objects.all()
+ 
+    # Solo incluir pagos efectivamente cobrados (efectivo y tarjeta)
+    # Los pagos con método 'pendiente' son deudas, no ventas realizadas
+    pagos = Pago.objects.exclude(metodo='pendiente')
     
     # Aplicar filtros si están presentes
     if fecha_inicio:
@@ -986,7 +988,7 @@ def completar_pago(request, pedido_id):
             metodo=metodo_pago
         )
         
-
+        
         if metodo_pago == 'efectivo':
             monto_recibido = float(request.POST.get('monto_recibido', 0))
             
@@ -1119,7 +1121,8 @@ def marcar_pago_como_pagado(request, pago_pendiente_id):
         
         # Actualizar el pago original
         pago = pago_pendiente.pago
-        pago.metodo = metodo_pago  # Actualizar al método real con el que se pagó
+        pago.metodo = metodo_pago
+        pago.fecha = timezone.now()  # actualiza la fecha al momento real del cobro
         pago.notas += f" | Pagado el {pago_pendiente.fecha_pago_real} con {metodo_pago}"
         pago.save()
         
@@ -2850,6 +2853,7 @@ def informe_pagos(request):
             
             pagos_por_mes = (
                 Pago.objects
+                .exclude(metodo='pendiente')
                 .filter(fecha__date__gte=desde_dt, fecha__date__lte=hasta_dt)
                 .annotate(mes=TruncMonth('fecha'))
                 .values('mes')
