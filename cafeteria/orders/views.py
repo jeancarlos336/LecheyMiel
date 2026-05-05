@@ -927,16 +927,21 @@ def informe_ventas(request):
     pagos = Pago.objects.exclude(metodo='pendiente')
     
     # Aplicar filtros si están presentes
+
     if fecha_inicio:
         try:
-            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            fecha_inicio_obj = timezone.make_aware(
+                datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            )
             pagos = pagos.filter(fecha__gte=fecha_inicio_obj)
         except ValueError:
             fecha_inicio = ''
-    
+
     if fecha_fin:
         try:
-            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+            fecha_fin_obj = timezone.make_aware(
+                datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+            )
             pagos = pagos.filter(fecha__lt=fecha_fin_obj)
         except ValueError:
             fecha_fin = ''
@@ -950,12 +955,14 @@ def informe_ventas(request):
     # Agrupar por método de pago
     resumen_por_metodo = {}
     for metodo, nombre in Pago.METODOS_PAGO:
+        if metodo == 'pendiente':
+            continue
         monto = pagos.filter(metodo=metodo).aggregate(total=Sum('monto'))['total'] or 0
         resumen_por_metodo[nombre] = monto
     
     # Obtener pagos para mostrar en la tabla
-    lista_pagos = pagos.select_related('pedido').order_by('-pedido_id')
-    
+    lista_pagos = pagos.select_related('pedido').order_by('-pedido_id')    
+
     context = {
         'pagos': lista_pagos,
         'fecha_inicio': fecha_inicio,
@@ -964,6 +971,7 @@ def informe_ventas(request):
         'total_ventas': total_ventas,
         'resumen_por_metodo': resumen_por_metodo,
         'metodos_pago': Pago.METODOS_PAGO,
+        'metodos_pago_filtro': [(code, name) for code, name in Pago.METODOS_PAGO if code != 'pendiente'],
     }
     
     return render(request, 'orders/pedidos/informe_ventas.html', context)
@@ -2755,10 +2763,11 @@ def ranking_productos_data(request):
         detalles_en_rango = DetallePedido.objects.filter(
             pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin]
         ).count()
-        
+               
         detalles_con_estado = DetallePedido.objects.filter(
-            pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
+            pedido__pagos__fecha__date__range=[fecha_inicio, fecha_fin],
             pedido__estado__in=['completado'],
+            pedido__estado_pago='pagado',
             estado__in=['Entregado', 'entregado', 'listo']
         ).count()
         
@@ -2778,8 +2787,9 @@ def ranking_productos_data(request):
         from django.db.models import F
         
         queryset_basico = DetallePedido.objects.filter(
-            pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
+            pedido__pagos__fecha__date__range=[fecha_inicio, fecha_fin],
             pedido__estado__in=['completado'],
+            pedido__estado_pago='pagado',
             estado__in=['Entregado', 'entregado', 'listo']
         ).select_related('producto', 'producto__categoria', 'pedido')
         
