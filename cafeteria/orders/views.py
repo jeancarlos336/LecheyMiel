@@ -2763,14 +2763,12 @@ def ranking_productos_data(request):
         detalles_en_rango = DetallePedido.objects.filter(
             pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin]
         ).count()
-               
-        detalles_con_estado = DetallePedido.objects.filter(
-            pedido__pagos__fecha__date__range=[fecha_inicio, fecha_fin],
-            pedido__estado__in=['completado'],
-            pedido__estado_pago='pagado',
-            estado__in=['Entregado', 'entregado', 'listo']
-        ).count()
         
+        detalles_con_estado = DetallePedido.objects.filter(
+            pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
+            estado__in=['Entregado', 'entregado', 'listo', 'Pendiente', 'pendiente', 'en_proceso', 'En proceso']
+        ).count()
+
         if detalles_con_estado == 0:
             return JsonResponse({
                 'ranking': [],
@@ -2783,15 +2781,14 @@ def ranking_productos_data(request):
                 'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),
                 'debug': f'No hay datos con estados válidos. Total en rango: {detalles_en_rango}'
             })
-        
+
         from django.db.models import F
-        
+
         queryset_basico = DetallePedido.objects.filter(
-            pedido__pagos__fecha__date__range=[fecha_inicio, fecha_fin],
-            pedido__estado__in=['completado'],
-            pedido__estado_pago='pagado',
-            estado__in=['Entregado', 'entregado', 'listo']
+            pedido__fecha_creacion__date__range=[fecha_inicio, fecha_fin],
+            estado__in=['Entregado', 'entregado', 'listo', 'Pendiente', 'pendiente', 'en_proceso', 'En proceso']
         ).select_related('producto', 'producto__categoria', 'pedido')
+                 
         
         ranking = queryset_basico.values(
             'producto__id',
