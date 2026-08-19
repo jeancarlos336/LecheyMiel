@@ -148,7 +148,20 @@
             color: #856404;
             font-style: italic;
         }
-        
+        .tiempo-tag {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+            margin-left: 4px;
+            border: 1px solid #000;
+        }
+        .tiempo-tag.rapido { background: #fff; font-weight: normal; }
+        .tiempo-tag.medio  { background: #ddd; font-weight: bold; }
+        .tiempo-tag.lento  { background: #bbb; font-weight: bold; border-width: 2px; }
+
         .print-buttons {
             padding: 20px;
             background: #f8f9fa;
@@ -315,12 +328,26 @@
                         <div class="item-nombre">{{ item.producto.nombre|upper }}</div>
                     </div>
                     
+
                     {% if item.producto.categoria.area_preparacion %}
                     <div class="area-tag cocina">
                         {{ item.producto.categoria.area_preparacion.nombre|upper }}
                     </div>
                     {% endif %}
-                    
+
+
+                    {% with t=item.producto.tiempo_preparacion %}
+                    {% if t %}
+                        {% if t <= 10 %}
+                        <span class="tiempo-tag rapido">⏱ {{ t }} min</span>
+                        {% elif t <= 20 %}
+                        <span class="tiempo-tag medio">⚠ {{ t }} min</span>
+                        {% else %}
+                        <span class="tiempo-tag lento">!! {{ t }} min — DEMORADO</span>
+                        {% endif %}
+                    {% endif %}
+                    {% endwith %}                   
+
                     {% if item.notas %}
                     <div class="item-notas">
                         <strong>📝 NOTAS:</strong> {{ item.notas }}
@@ -348,7 +375,19 @@
                         {{ item.producto.categoria.area_preparacion.nombre|upper }}
                     </div>
                     {% endif %}
-                    
+
+                    {% with t=item.producto.tiempo_preparacion %}
+                    {% if t %}
+                        {% if t <= 10 %}
+                        <span class="tiempo-tag rapido">⏱ {{ t }} min</span>
+                        {% elif t <= 20 %}
+                        <span class="tiempo-tag medio">⚠ {{ t }} min</span>
+                        {% else %}
+                        <span class="tiempo-tag lento">!! {{ t }} min — DEMORADO</span>
+                        {% endif %}
+                    {% endif %}
+                    {% endwith %}
+
                     {% if item.notas %}
                     <div class="item-notas">
                         <strong>📝 NOTAS:</strong> {{ item.notas }}

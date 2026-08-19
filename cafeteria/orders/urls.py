@@ -87,5 +87,8 @@ urlpatterns = [
     path('api/ranking-productos/', views.ranking_productos_data, name='ranking_productos_api'),
     
     path('informes/pagos/', views.informe_pagos, name='informe_pagos'),
+
+
     
 ]
+
